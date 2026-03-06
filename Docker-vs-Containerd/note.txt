@@ -1,0 +1,121 @@
+# Docker vs containerd (CKA / KodeKloud Notes)
+
+## Why Docker became popular (the “works on my machine” problem)
+Before containers, developers and ops often fought because:
+- Dev: “It runs on my laptop”
+- Ops: “It fails in server/VM”
+
+**Docker fixed this** by packaging:
+- app code
+- runtime (e.g., node/python/jvm)
+- dependencies/libraries
+- OS-level filesystem layout
+into a single **image**, which runs the same way anywhere as a **container**.
+
+**Quick mental model**
+- **Image** = packaged app + dependencies (blueprint)
+- **Container** = running instance of an image (running app)
+
+---
+
+## What Docker actually is (important for CKA)
+Docker is not only “a runtime”. It’s a full toolchain:
+- build images (`docker build`)
+- push/pull images (`docker push/pull`)
+- run containers (`docker run`)
+- plus a daemon stack under the hood.
+
+Under the hood, Docker uses:
+- **containerd** (manages container lifecycle, images, etc.)
+- **runc** (actually starts the container process)
+
+So: **Docker ≈ dev-friendly tooling + daemon + (containerd + runc underneath)**.  
+(KodeKloud highlights this separation clearly.) 
+
+---
+
+## Kubernetes angle: CRI (why Docker got “removed”)
+Kubernetes wants kubelet to work with different runtimes (not only Docker), so it uses **CRI (Container Runtime Interface)**.
+
+**CRI = the standard language kubelet speaks to a runtime.**
+- kubelet → CRI → runtime (containerd / CRI-O / etc.)
+- No CRI → kubelet can’t manage containers
+
+This is why Kubernetes prefers **CRI-native runtimes** like containerd and CRI-O.
+
+---
+
+## What was dockershim?
+Docker Engine did **not** speak CRI natively, so Kubernetes used a translator called **dockershim**.
+
+- kubelet (CRI) → dockershim → Docker Engine API
+
+Kubernetes removed dockershim in **v1.24**, meaning Docker Engine is no longer supported as a runtime **directly** inside kubelet.
+
+✅ **Important:** Docker *images* still work (OCI image format).  
+The change was about the runtime integration, not the image format.
+
+---
+
+## So what should you use and when?
+
+### 1) Docker (best for developers)
+Use Docker for:
+- building images
+- pushing to registry
+- quick local testing
+
+### 2) containerd (best for Kubernetes nodes)
+Use containerd because:
+- it’s CRI-compatible (Kubernetes can talk to it directly)
+- it’s lightweight and widely used in clusters (and kind)
+
+### 3) runc (you rarely touch it directly)
+runc is the low-level runtime that starts the container process.
+You don’t typically use runc commands for CKA.
+
+### 4) crictl (CKA troubleshooting tool ✅)
+In CKA, on nodes you often use **crictl** instead of docker:
+- list running containers managed by CRI
+- check logs
+- exec into containers
+
+Common commands:
+- `crictl ps`
+- `crictl pods`
+- `crictl logs <container-id>`
+- `crictl exec -it <container-id> sh`
+- `crictl images`
+
+---
+
+## The one chain to memorize (CKA gold)
+**kubelet → CRI → containerd → runc → container process**
+
+---
+
+## kind-specific note (why ImagePullBackOff happens)
+In **kind**, “nodes” are Docker containers, but **inside each node the runtime is containerd**.
+So image pulling happens *inside the kind node containers*, not on your host.
+
+If your pod shows `ImagePullBackOff`, a reliable fix is:
+1) pull image on host
+2) load it into kind nodes
+
+Example:
+- `docker pull nginx:1.25-alpine`
+- `kind load docker-image nginx:1.25-alpine`
+
+Then use the pinned tag in your Deployment.
+
+---
+
+## Quick CKA check commands (runtime awareness)
+On your host:
+- `kubectl get nodes -o wide`
+- `kubectl -n kube-system get pods -o wide`
+
+Inside a kind node:
+- `docker exec -it kind-worker bash`
+- `crictl info | head`
+- `crictl ps`
