@@ -1,0 +1,95 @@
+ETCD IN KUBERNETES (KodeKloud CKA Notes)
+=======================================
+
+1) What is etcd?
+----------------
+- etcd is a distributed key-value store.
+- In Kubernetes, etcd is the “cluster datastore / source of truth”.
+- It stores cluster state like:
+  Nodes, Pods, Deployments, Services, ConfigMaps, Secrets,
+  Accounts, Roles, RoleBindings, etc.
+
+Key rule:
+- Only kube-apiserver talks directly to etcd.
+  kubectl -> kube-apiserver -> etcd
+  Controllers/Scheduler watch via API server and act (reconcile state).
+
+2) Where does etcd run in Kubernetes?
+-------------------------------------
+Two common setups:
+
+A) Manual cluster setup:
+- You install etcd binaries and run etcd as a service yourself
+  (on control-plane/master nodes).
+
+B) kubeadm setup (common in labs + kind uses kubeadm-style internally):
+- kubeadm deploys etcd as a pod in kube-system namespace.
+- Check:
+  kubectl -n kube-system get pods | grep etcd
+
+3) How is Kubernetes data stored in etcd?
+-----------------------------------------
+- Kubernetes stores objects in a directory-like key structure.
+- Root is usually /registry
+  Example idea:
+  /registry/pods/<namespace>/<pod-name>
+  /registry/secrets/<namespace>/<secret-name>
+  /registry/deployments/<namespace>/<deploy-name>
+
+(Do NOT write random keys in k8s etcd. Read-only is safer.)
+
+4) Explore etcd (read-only) – common command pattern
+----------------------------------------------------
+(Inside the etcd pod, using certs)
+
+kubectl exec -n kube-system <etcd-pod> -- sh -c '
+  export ETCDCTL_API=3
+  etcdctl --endpoints=https://127.0.0.1:2379 \
+    --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+    --cert=/etc/kubernetes/pki/etcd/server.crt \
+    --key=/etc/kubernetes/pki/etcd/server.key \
+    get /registry/ --prefix --keys-only | head
+'
+
+5) HA idea (high-level)
+-----------------------
+- In HA clusters, etcd runs as multiple members across control-plane nodes.
+- etcd needs quorum/majority to accept writes:
+  3 members -> need 2
+  5 members -> need 3
+
+6) CKA MUST-KNOW: etcd Backup & Restore
+---------------------------------------
+Two backup mindsets:
+
+A) Resource backup (YAML/GitOps)
+- Keep manifests in Git.
+- Can export resources with kubectl, but may not capture everything.
+
+B) etcd snapshot (full cluster state backup)
+- Snapshot:
+  export ETCDCTL_API=3
+  etcdctl snapshot save snapshot.db
+  etcdctl snapshot status snapshot.db
+
+In real kubeadm clusters, snapshot usually requires endpoint + certs:
+  --endpoints=https://127.0.0.1:2379
+  --cacert=...
+  --cert=...
+  --key=...
+
+Restore (high-level steps KodeKloud style):
+- Stop API server
+- Restore snapshot
+- Point etcd to restored data directory
+- Restart etcd
+- Start API server
+(Exact steps differ per lab/cluster type.)
+
+7) Quick exam checklist
+-----------------------
+- Always set: ETCDCTL_API=3
+- Know default endpoint: https://127.0.0.1:2379 (often)
+- Know cert paths in kubeadm: /etc/kubernetes/pki/etcd/
+- Practice snapshot save + verify status
+- Prefer read-only exploration of /registry keys
