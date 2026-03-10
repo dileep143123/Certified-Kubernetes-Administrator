@@ -1,0 +1,46 @@
+KUBE-APISERVER (KodeKloud CKA Notes)
+===================================
+
+1) What is kube-apiserver?
+--------------------------
+- The kube-apiserver is the front-end (entry point) of the Kubernetes control plane.
+- It exposes the Kubernetes REST API.
+
+2) Who talks to kube-apiserver?
+-------------------------------
+- kubectl / users
+- kubelet (node agent)
+- kube-scheduler
+- controller-manager
+- any component that needs cluster state
+
+In short: almost everything communicates through the API server.
+
+3) Main responsibilities
+------------------------
+A) Authentication (AuthN)
+- Verifies who you are (certs, tokens, etc.)
+
+B) Authorization (AuthZ)
+- Checks what you are allowed to do (RBAC)
+
+C) Admission Controllers
+- Validates and can mutate requests before storing objects
+- Example: enforcing policies, defaults, limits, etc.
+
+D) Stores cluster state in etcd
+- kube-apiserver is the ONLY component that directly talks to etcd.
+- All objects (pods, deployments, services, secrets, configmaps, etc.)
+  are persisted in etcd through the API server.
+
+4) Why it matters for CKA debugging
+-----------------------------------
+- If API server is down/slow:
+  - kubectl commands fail or hang
+  - scheduling/controllers can’t update state reliably
+- Always check readiness/health endpoints.
+
+5) Quick health checks (CKA)
+----------------------------
+kubectl get --raw='/readyz?verbose'
+kubectl get --raw='/healthz?verbose'
