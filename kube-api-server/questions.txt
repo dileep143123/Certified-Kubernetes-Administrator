@@ -1,0 +1,120 @@
+CKA: KUBE-APISERVER — QUESTIONS & ANSWERS (Beginner → Expert)
+============================================================
+
+BEGINNER (FOUNDATION)
+---------------------
+
+1) Q: What is the kube-apiserver?
+   A: It is the front-end of the Kubernetes control plane. It exposes the Kubernetes
+      REST API and is the main entry point for all cluster operations.
+
+2) Q: Why is kube-apiserver called the “front door” of the cluster?
+   A: Because every request (kubectl, controllers, scheduler, kubelet updates) goes
+      through the API server.
+
+3) Q: When I run "kubectl get pods", what is happening?
+   A: kubectl sends a REST request to kube-apiserver. kube-apiserver reads the
+      requested objects (from etcd) and returns the response.
+
+4) Q: Which component talks directly to etcd?
+   A: Only the kube-apiserver talks directly to etcd. Other components use the API
+      server to read/write cluster state.
+
+5) Q: What is Authentication (AuthN) in kube-apiserver?
+   A: It verifies who you are (e.g., certificates, tokens).
+
+6) Q: What is Authorization (AuthZ) in kube-apiserver?
+   A: It checks what you are allowed to do (commonly via RBAC rules).
+
+7) Q: What is RBAC and how is it related to kube-apiserver?
+   A: RBAC is a permission system (roles/rolebindings). kube-apiserver enforces RBAC
+      when a request is made.
+
+8) Q: What is an admission controller in simple words?
+   A: It is a gate that runs after auth checks and before storing the object. It can
+      allow/deny requests and sometimes modify (mutate) them.
+
+9) Q: What happens if kube-apiserver is down?
+   A: kubectl commands will fail/hang and the control plane can’t reliably process new
+      changes (create/scale/update).
+
+10) Q: What are quick kube-apiserver health checks (CKA)?
+    A:
+      kubectl get --raw='/healthz'
+      kubectl get --raw='/readyz?verbose'
+
+INTERMEDIATE (CKA PRACTICAL FLOW)
+--------------------------------
+
+11) Q: Explain the backend flow of "kubectl apply -f pod.yaml".
+    A: kubectl sends request → kube-apiserver authenticates/authorizes →
+       admission controllers run → kube-apiserver stores object in etcd →
+       controllers/scheduler watch API server and act → kubelet runs containers.
+
+12) Q: If a Pod is stuck in Pending, is that an API server issue?
+    A: Not necessarily. The API server may be fine. Often it’s a scheduler/resource
+       issue. Use "kubectl describe pod" and check Events for FailedScheduling.
+
+13) Q: Who “watches” the kube-apiserver?
+    A: Controllers and the scheduler watch the API server for new/changed objects so
+       they can reconcile desired state.
+
+14) Q: What’s the difference between 401 and 403 errors in kubectl?
+    A:
+      401 Unauthorized = authentication failed (identity not proven).
+      403 Forbidden    = authorization denied (RBAC doesn’t allow action).
+
+15) Q: What does kube-apiserver store in etcd?
+    A: Kubernetes objects/state: Pods, Deployments, Services, ConfigMaps, Secrets,
+       Roles/Bindings, Nodes, etc.
+
+16) Q: Where do you see kube-apiserver running in a kubeadm cluster?
+    A: Usually as a static pod in kube-system namespace (kube-apiserver-<node>).
+
+17) Q: Where do you look first when kubectl feels slow?
+    A: Check API server readiness/health endpoints and also consider etcd health, since
+       API server depends on etcd for state reads/writes.
+
+18) Q: Can worker nodes write directly to etcd?
+    A: No. Nodes report status to the API server; API server writes to etcd.
+
+EXPERT (DEEP UNDERSTANDING / INTERVIEW)
+---------------------------------------
+
+19) Q: Why can you run multiple kube-apiserver instances?
+    A: Because kube-apiserver is designed to be horizontally scalable and stateless
+       (relative to persistent state), while etcd stores the durable state. Multiple
+       API servers can share the same etcd cluster behind a load balancer.
+
+20) Q: What is the admission chain (high level)?
+    A: After AuthN/AuthZ, requests go through admission controllers (mutating then
+       validating). If they pass, the object is persisted.
+
+21) Q: How can admission webhooks cause a cluster outage?
+    A: If a webhook is slow/unreachable and failure policy blocks requests, CREATE/UPDATE
+       operations can hang/fail, making the control plane “feel down”.
+
+22) Q: Why does etcd performance affect kube-apiserver?
+    A: kube-apiserver reads/writes state to etcd. If etcd is slow, API server requests
+       become slow and kubectl operations may lag.
+
+23) Q: What is a common symptom of heavy watch traffic?
+    A: High load on API server, slow list/watch responses, controller lag. Many components
+       depend on watch streams to react quickly.
+
+24) Q: What’s the key security role of kube-apiserver related to etcd?
+    A: It enforces access control. In many setups it also performs encryption/decryption
+       for secrets when encryption at rest is enabled.
+
+25) Q: In one line, what should you remember for CKA?
+    A: kube-apiserver is the gatekeeper + API hub + only path to etcd; most debugging starts
+       by checking health/ready endpoints and reading Events from kubectl describe.
+
+END
+===
+Tip for CKA:
+- Always correlate symptoms to component:
+  - 401/403 -> AuthN/AuthZ (API server/RBAC)
+  - Pending -> Scheduler constraints/resources
+  - ImagePullBackOff -> Kubelet/runtime/network/registry
+  - Slow kubectl -> API server + etcd health
