@@ -1,0 +1,122 @@
+CKA: KUBE-SCHEDULER — QUESTIONS & ANSWERS (Beginner → Expert)
+============================================================
+
+BEGINNER (FOUNDATION)
+---------------------
+
+1) Q: What is kube-scheduler?
+   A: It is a Kubernetes control plane component that decides WHERE a Pod runs by
+      selecting the best Node for it.
+
+2) Q: When does the scheduler take action?
+   A: When a Pod exists but has no node assigned (Pod is Pending and spec.nodeName is empty).
+
+3) Q: Does scheduler create Pods?
+   A: No. Controllers (like Deployment/ReplicaSet controllers) create Pods. Scheduler only
+      assigns them to nodes.
+
+4) Q: Does scheduler run containers?
+   A: No. Kubelet on the chosen node runs containers using the container runtime.
+
+5) Q: Does scheduler talk directly to etcd?
+   A: No. Scheduler talks to the kube-apiserver. API server is the only component that
+      talks directly to etcd.
+
+INTERMEDIATE (CKA PRACTICAL)
+----------------------------
+
+6) Q: What are the main scheduling phases (high-level)?
+   A:
+   - Filtering: find nodes that can run the pod (feasible nodes)
+   - Scoring: rank feasible nodes to pick the best one
+   - Binding: write the chosen node into Pod.spec.nodeName via the API server
+
+7) Q: What inputs affect scheduling the most (CKA must-know)?
+   A:
+   - Resource requests (CPU/memory) and available node resources
+   - Taints & Tolerations
+   - nodeSelector
+   - Node Affinity / Anti-Affinity
+   - Topology/spread preferences (conceptually)
+
+8) Q: A Pod is stuck in Pending. What should you check first?
+   A:
+   - kubectl describe pod <pod>
+     Look for:
+     - Condition: PodScheduled = False
+     - Events: FailedScheduling (with the exact reason)
+
+9) Q: Give common reasons for FailedScheduling.
+   A:
+   - Insufficient cpu/memory
+   - Taint NoSchedule not tolerated
+   - nodeSelector/required affinity matches no nodes
+   - PVC not bound (sometimes blocks scheduling)
+   - Node(s) not Ready / unsuitable
+
+10) Q: What is the difference between nodeSelector and node affinity?
+    A:
+    - nodeSelector is simple exact-match labels.
+    - node affinity is more expressive (required/preferred rules).
+
+11) Q: What is the difference between taints/tolerations vs affinity?
+    A:
+    - Taints repel pods from nodes unless tolerated.
+    - Affinity attracts pods to nodes based on rules.
+
+12) Q: How do DaemonSets relate to scheduling?
+    A: DaemonSet controller ensures one pod per node. Scheduler behavior is different because
+       DaemonSets are handled by the controller (still results in pods being bound to nodes).
+
+13) Q: Are static pods scheduled by kube-scheduler?
+    A: No. Static pods are created directly by kubelet from manifest files on the node and
+       are not scheduled by the scheduler.
+
+EXPERT (FLOW + INTERVIEW DEPTH)
+--------------------------------
+
+14) Q: Explain the full lifecycle: "How does a Pod get scheduled and run?" (Controller Manager + Scheduler + Kubelet)
+    A:
+    Step 1: You create a workload (e.g., Deployment) using kubectl.
+            kubectl sends the request to kube-apiserver, which stores it in etcd.
+    Step 2: The Deployment controller (inside kube-controller-manager) creates a ReplicaSet.
+    Step 3: The ReplicaSet controller creates Pod objects to match the desired replicas.
+            These pods appear as Pending with no node assigned.
+    Step 4: kube-scheduler watches for unscheduled Pods. It filters feasible nodes,
+            scores them, and selects the best node.
+    Step 5: Scheduler binds the Pod to the chosen node by updating Pod.spec.nodeName
+            via kube-apiserver (stored in etcd).
+    Step 6: The kubelet on that node watches the API server, sees the Pod assigned to it,
+            pulls the image and starts containers via the container runtime.
+    Step 7: kubelet reports Pod status back to kube-apiserver (Running/Ready, etc.).
+
+15) Q: What exact field changes when a pod is scheduled to a node?
+    A: Pod.spec.nodeName gets set to the chosen node name.
+
+16) Q: If scheduler is down, what symptom do you see?
+    A: Pods stay Pending with no node assigned, and Events show scheduling not happening.
+
+17) Q: If scheduler assigned the pod but it still doesn’t run, what do you suspect next?
+    A: Kubelet/runtime issues on that node (image pull, container start, CNI/networking).
+       Check Events + kubelet logs + container runtime.
+
+18) Q: What does "Successfully assigned ... to <node>" in Events mean?
+    A: Scheduler completed binding and selected the node.
+
+19) Q: Where do you check scheduler logs in kubeadm clusters?
+    A:
+      kubectl -n kube-system logs kube-scheduler-<control-plane-node>
+
+CKA QUICK CHECKLIST (POD PENDING)
+---------------------------------
+- kubectl describe pod <pod>
+  - PodScheduled condition
+  - FailedScheduling event reason
+- Check nodes:
+  kubectl get nodes -o wide
+- Check constraints:
+  nodeSelector / affinity / taints / resource requests
+- If assigned but not running:
+  check kubelet/runtime/CNI + Events
+
+END

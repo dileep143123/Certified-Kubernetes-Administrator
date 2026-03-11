@@ -1,0 +1,96 @@
+KUBE-SCHEDULER (KodeKloud CKA Notes)
+===================================
+
+1) What is kube-scheduler?
+--------------------------
+- kube-scheduler is a Kubernetes control plane component that decides
+  WHERE a Pod should run (which node).
+- It only works on Pods that are created but NOT assigned to any node yet.
+
+Key line:
+- Controller-manager creates Pod objects.
+- Scheduler assigns the Pod to a Node.
+
+2) What triggers scheduling?
+----------------------------
+- A Pod appears with:
+  - Status: Pending
+  - spec.nodeName: empty (no node assigned)
+
+Scheduler watches the API server for such Pods.
+
+3) How scheduling works (high-level steps)
+------------------------------------------
+Scheduler typically performs:
+
+A) Filtering phase (find feasible nodes)
+- Removes nodes that cannot run the Pod due to:
+  - insufficient CPU/memory
+  - taints (NoSchedule) without matching tolerations
+  - nodeSelector mismatch
+  - required node affinity mismatch
+  - other constraints
+
+B) Scoring phase (choose the best node)
+- Among feasible nodes, it scores/ranks nodes based on:
+  - least/most loaded
+  - spreading pods
+  - affinity/anti-affinity preferences
+  - topology spread preferences
+
+C) Binding
+- Scheduler writes the decision back to the API server:
+  - Pod.spec.nodeName = <chosen-node>
+
+After binding, kubelet on that node starts the containers.
+
+4) What scheduler does NOT do
+-----------------------------
+- It does NOT create Pods (controllers create Pods).
+- It does NOT run containers (kubelet + runtime does that).
+- It does NOT talk to etcd directly (uses API server).
+
+5) Common scheduling features (CKA must-know)
+---------------------------------------------
+- Labels & Selectors (match pods to nodes/services)
+- nodeSelector (simple node constraints)
+- Node Affinity (advanced node constraints)
+- Taints & Tolerations (keep pods away unless allowed)
+- Resource requests/limits (requests affect scheduling)
+- DaemonSets (special case: controller schedules one per node)
+- Static Pods (kubelet-managed, not scheduled by scheduler)
+
+6) Why it matters for CKA debugging
+-----------------------------------
+If a Pod is stuck in Pending, scheduler is one of the first suspects.
+
+Check:
+- kubectl describe pod <pod>
+Look at:
+- Conditions:
+  PodScheduled: False
+- Events:
+  FailedScheduling: <reason>
+
+Common reasons:
+- Insufficient cpu/memory
+- Node(s) had taint {key: NoSchedule} and pod didn’t tolerate it
+- nodeSelector/affinity rules match no nodes
+
+7) Quick checks (CKA)
+---------------------
+- See scheduler pod (kubeadm):
+  kubectl -n kube-system get pods | grep scheduler
+
+- Logs:
+  kubectl -n kube-system logs kube-scheduler-<control-plane-node>
+
+- Debug a stuck pod:
+  kubectl describe pod <pod>
+  kubectl get nodes -o wide
+
+8) One-liner to remember
+------------------------
+- Controller-manager ensures "desired pods exist".
+- Scheduler decides "which node each pod runs on".
+- Kubelet + runtime actually "run the containers".
