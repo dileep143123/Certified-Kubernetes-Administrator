@@ -1,0 +1,83 @@
+KUBE-CONTROLLER-MANAGER (KodeKloud CKA Notes)
+============================================
+
+1) What is kube-controller-manager?
+-----------------------------------
+- kube-controller-manager is a control plane component that runs many
+  "controllers".
+- A controller is a loop that constantly watches the cluster state and
+  tries to make the current state match the desired state.
+
+Simple line:
+- Controllers are the “auto-fix / auto-heal” brains of Kubernetes.
+
+2) What does a controller do (the core idea)?
+---------------------------------------------
+- Watch: reads desired/current state via kube-apiserver
+- Compare: desired vs current
+- Act: creates/updates/deletes objects to fix the difference
+
+Important rule:
+- Controllers do NOT talk to etcd directly.
+- They talk to kube-apiserver, and kube-apiserver stores changes in etcd.
+
+3) Common controllers inside controller-manager
+-----------------------------------------------
+- Node Controller
+  - Monitors node health (Ready/NotReady), handles node failure cases.
+- Replication Controller / ReplicaSet Controller
+  - Ensures the correct number of pod replicas exist.
+- Deployment Controller
+  - Manages rolling updates/rollbacks by creating/updating ReplicaSets.
+- Endpoint Controller
+  - Updates Service endpoints based on matching pod labels.
+- Namespace Controller
+  - Handles namespace lifecycle and cleanup.
+- ServiceAccount Controller
+  - Manages service accounts and related tokens.
+(There are many more, but these are the most common for CKA understanding.)
+
+4) Example (CKA-style) — how it “auto-heals”
+--------------------------------------------
+Scenario: Deployment wants 3 replicas.
+- Desired state (in Deployment spec): replicas=3
+- If one pod dies:
+  - ReplicaSet controller notices replicas < 3
+  - It creates a new pod to restore replicas to 3
+Result: self-healing behavior.
+
+5) Leader election (HA clusters)
+--------------------------------
+- In HA setups, you may have multiple controller-manager instances.
+- Only one is active at a time (leader) to avoid duplicate actions.
+- Leader election is coordinated through the API server (using Leases).
+
+6) Why it matters for CKA debugging
+-----------------------------------
+If controllers are unhealthy/down:
+- Deployments may not create/replace pods
+- ReplicaSets may not maintain desired replica count
+- Nodes may not be marked appropriately / failover behavior may be delayed
+- Some Service endpoint updates may lag
+
+Typical symptoms:
+- You apply a Deployment but pods do not appear (and scheduler is fine)
+- Replica count doesn’t reconcile after deleting a pod
+
+7) Quick checks (CKA)
+---------------------
+- Check controller-manager pod (kubeadm setups):
+  kubectl -n kube-system get pods | grep controller-manager
+
+- Describe to see issues/events:
+  kubectl -n kube-system describe pod kube-controller-manager-<node>
+
+- Logs (most useful for troubleshooting):
+  kubectl -n kube-system logs kube-controller-manager-<node>
+
+8) One-liner to remember
+------------------------
+- Scheduler decides WHERE pods run.
+- Controller-manager ensures WHAT should exist actually exists.
+
+(Controller-manager = reconciliation / self-healing engine)

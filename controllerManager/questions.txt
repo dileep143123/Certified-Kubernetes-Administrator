@@ -1,0 +1,94 @@
+CKA: KUBE-CONTROLLER-MANAGER — QUESTIONS & ANSWERS (Beginner → Expert)
+=====================================================================
+
+BEGINNER (FOUNDATION)
+---------------------
+
+1) Q: What is kube-controller-manager?
+   A: It is a Kubernetes control plane component that runs multiple controllers.
+      Controllers continuously ensure the cluster’s current state matches the desired state.
+
+2) Q: What is a “controller” in Kubernetes?
+   A: A controller is a reconciliation loop:
+      Watch (via API server) → Compare desired vs current → Act to fix differences.
+
+3) Q: Does controller-manager talk directly to etcd?
+   A: No. Controllers talk to the kube-apiserver. The API server is the only component
+      that talks directly to etcd.
+
+4) Q: Why is controller-manager important?
+   A: It provides self-healing and automation. Without it, Kubernetes won’t reliably
+      maintain desired replicas, endpoints, node status handling, etc.
+
+5) Q: Give a simple example of controller behavior.
+   A: If a ReplicaSet wants 3 Pods and 1 dies, the ReplicaSet controller creates a new Pod
+      so replicas return to 3.
+
+INTERMEDIATE (CKA PRACTICAL)
+----------------------------
+
+6) Q: What is the difference between Scheduler and Controller-manager?
+   A:
+   - Scheduler decides WHERE a Pod should run (assigns it to a node).
+   - Controller-manager ensures WHAT should exist actually exists (reconciles state).
+
+7) Q: When you create a Deployment, which controllers are involved?
+   A:
+   - Deployment controller creates/updates a ReplicaSet.
+   - ReplicaSet controller creates Pods to match the replica count.
+
+8) Q: If a Pod is “Pending”, is that controller-manager’s problem?
+   A: Usually no. Pending typically means scheduling/resource constraints.
+      Controller-manager creates the Pod object, but scheduler must assign a node.
+
+9) Q: If you delete a pod from a Deployment, why does it come back?
+   A: The ReplicaSet controller notices replicas are below desired count and creates
+      a replacement Pod (self-healing).
+
+10) Q: What output/command would you check if a Deployment is not creating Pods?
+    A:
+    - kubectl describe deploy <name>
+    - kubectl get rs
+    - kubectl describe rs <name>
+    - Check kube-controller-manager logs:
+      kubectl -n kube-system logs kube-controller-manager-<node>
+
+11) Q: Name a few common controllers inside controller-manager.
+    A: Node controller, ReplicaSet controller, Deployment controller, Endpoint controller,
+       Namespace controller, ServiceAccount controller (and others).
+
+12) Q: What does the Endpoint controller do?
+    A: It updates the list of endpoints (pod IPs/ports) behind a Service based on label selectors.
+
+13) Q: What does the Node controller do at a high level?
+    A: It monitors node health (Ready/NotReady) and triggers actions when nodes become unreachable.
+
+EXPERT (INTERVIEW DEPTH)
+------------------------
+
+14) Q: Why does controller-manager use “leader election” in HA?
+    A: To prevent multiple controller-managers from acting at the same time and creating
+       duplicate/conflicting operations. Only the leader is active.
+
+15) Q: How does controller-manager “watch” cluster state?
+    A: It watches resources via the kube-apiserver (list/watch). It does not read etcd directly.
+
+16) Q: What symptoms might you see if controller-manager is down?
+    A:
+    - Deployments/ReplicaSets stop reconciling (pods not created/replaced)
+    - Node status handling can degrade
+    - Some endpoint/service account/namespace lifecycle behaviors may lag
+
+17) Q: If controller-manager is fine, but pods are not starting, what other component do you check?
+    A: Scheduler (for node assignment), then kubelet/runtime (for container start), and Events.
+
+18) Q: In one sentence, explain “reconciliation”.
+    A: Reconciliation is the continuous process of comparing desired state to current state
+       and taking actions to make them match.
+
+CKA QUICK CHECKLIST
+-------------------
+- Scheduler = WHERE
+- Controller-manager = WHAT (desired state becomes reality)
+- Controllers talk to API server (not etcd)
+- Debug with: describe (deploy/rs/pod) + Events + controller-manager logs when needed
