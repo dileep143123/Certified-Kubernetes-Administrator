@@ -1,11 +1,13 @@
-apiServer: v1
-kind: pod
+apiVersion: v1
+kind: Pod
 metadata:
-   name: nginx
+   name: frontend-pod
    labels:
      app: nginx
-     type: frontend
+     tier: frontend
 spec:
    containers:
    - name: nginx-container
-     image: nginx
+     image: nginx:1.25-alpine
+     ports:
+       - containerPort: 80
