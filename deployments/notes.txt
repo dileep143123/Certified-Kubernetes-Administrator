@@ -1,0 +1,129 @@
+DEPLOYMENTS (KodeKloud CKA Notes)
+=================================
+
+1) What is a Deployment?
+------------------------
+- A Deployment is a Kubernetes controller used to run and manage stateless applications.
+- It provides:
+  - desired replica management (scaling)
+  - rolling updates (zero/min downtime updates)
+  - rollbacks (revert to previous version)
+  - rollout history (revisions)
+
+2) Deployment is NOT directly creating Pods
+-------------------------------------------
+Core chain (must memorize):
+- Deployment -> ReplicaSet -> Pods
+
+- Deployment controller creates/updates ReplicaSets.
+- ReplicaSet controller creates/maintains Pods.
+
+3) Why use Deployment instead of ReplicaSet directly?
+-----------------------------------------------------
+- ReplicaSet ensures "N pods are running", but doesn't manage versions nicely.
+- Deployment adds:
+  - controlled rollout strategy (step-by-step replacement)
+  - rollback support
+  - revision history
+
+Real-world standard:
+- Use Deployment for apps; rarely create ReplicaSet manually.
+
+4) Key fields in a Deployment YAML (CKA focus)
+----------------------------------------------
+- spec.replicas
+  Desired number of pod replicas.
+
+- spec.selector
+  Labels that identify which pods belong to this Deployment.
+  MUST match labels in spec.template.metadata.labels.
+
+- spec.template
+  The Pod template (containers, image, env, ports, etc.) used to create pods.
+
+- spec.strategy
+  How updates happen:
+  A) RollingUpdate (default)
+  B) Recreate (all old pods killed then new created)
+
+RollingUpdate parameters:
+- maxSurge
+  How many extra pods can be created temporarily during update.
+- maxUnavailable
+  How many pods can be unavailable during update.
+
+- revisionHistoryLimit
+  How many old ReplicaSets to keep for rollback.
+
+5) What happens during a rolling update (behind the scenes)
+-----------------------------------------------------------
+Example: replicas=3, update image v1 -> v2
+
+- Deployment creates a NEW ReplicaSet for the new Pod template (v2).
+- It scales UP new RS and scales DOWN old RS gradually.
+- Result: app stays available while version changes.
+
+Important:
+- Old ReplicaSet usually remains (scaled down) so rollback is possible.
+
+6) Rollout + rollback (CKA must know)
+-------------------------------------
+- rollout status:
+  kubectl rollout status deploy/<name>
+
+- rollout history:
+  kubectl rollout history deploy/<name>
+
+- rollback:
+  kubectl rollout undo deploy/<name>
+
+- rollback to a revision:
+  kubectl rollout undo deploy/<name> --to-revision=<N>
+
+7) Common deployment debugging patterns (CKA)
+---------------------------------------------
+A) Rollout stuck / not progressing
+- Usually because new pods are not becoming Ready.
+- Check:
+  kubectl rollout status deploy/<name>
+  kubectl describe deploy/<name>   (Events)
+  kubectl get rs
+  kubectl describe rs <new-rs>     (Events)
+  kubectl describe pod <pod>       (Events)
+  kubectl logs <pod> / --previous
+
+Common reasons:
+- ImagePullBackOff / ErrImagePull
+- readinessProbe failing (pods never Ready)
+- FailedScheduling (resources/taints/affinity)
+- bad env/config/secret issues
+- CrashLoopBackOff
+
+B) Multiple ReplicaSets exist
+- Normal. Deployment keeps old RS for rollback history.
+
+C) Service not routing after update
+- Pods may be Running but not Ready.
+- Verify endpoints:
+  kubectl get endpoints <svc>
+
+8) Useful CKA commands (quick reference)
+----------------------------------------
+- Create deployment:
+  kubectl create deployment web --image=nginx:1.25-alpine
+
+- Scale:
+  kubectl scale deployment/web --replicas=5
+
+- Update image (triggers rollout):
+  kubectl set image deployment/web web=nginx:1.26-alpine
+
+- Observe:
+  kubectl get deploy,rs,pods
+  kubectl rollout status deployment/web
+
+9) One-liner memory
+-------------------
+- ReplicaSet keeps N pods running.
+- Deployment manages ReplicaSets to do safe updates + rollback.
+
