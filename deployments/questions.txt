@@ -1,0 +1,115 @@
+CKA: DEPLOYMENTS — QUESTIONS & ANSWERS (Detailed Understanding)
+==============================================================
+
+FOUNDATION
+----------
+
+1) Q: What is a Deployment?
+   A: A Kubernetes controller that manages stateless apps by maintaining replicas,
+      performing rolling updates, and supporting rollbacks.
+
+2) Q: What is the core object chain for Deployments?
+   A: Deployment -> ReplicaSet -> Pods
+
+3) Q: Does a Deployment create pods directly?
+   A: No. It creates/updates ReplicaSets. ReplicaSets create pods.
+
+4) Q: Why use Deployment instead of ReplicaSet?
+   A: Deployment provides rolling updates, rollbacks, and rollout history. RS only maintains
+      replica count.
+
+UNDER THE HOOD (ROLLING UPDATE)
+-------------------------------
+
+5) Q: What happens when you update the container image in a Deployment?
+   A:
+   - Deployment creates a new ReplicaSet for the new Pod template.
+   - New RS scales up while old RS scales down gradually (RollingUpdate).
+
+6) Q: Why do you see multiple ReplicaSets after updating a Deployment?
+   A: Each change in Pod template creates a new ReplicaSet (new revision). Old RS is kept
+      for rollback history.
+
+7) Q: What is the purpose of revisionHistoryLimit?
+   A: It controls how many old ReplicaSets are retained for rollbacks.
+
+8) Q: What does maxSurge mean?
+   A: How many extra pods can be created above desired replicas during a rolling update.
+
+9) Q: What does maxUnavailable mean?
+   A: How many pods are allowed to be unavailable during a rolling update.
+
+10) Q: When would you use strategy: Recreate?
+    A: When you cannot run old and new versions at the same time (downtime is acceptable).
+
+ROLLBACK / HISTORY (CKA MUST KNOW)
+---------------------------------
+
+11) Q: How do you watch rollout progress?
+    A: kubectl rollout status deploy/<name>
+
+12) Q: How do you view rollout history?
+    A: kubectl rollout history deploy/<name>
+
+13) Q: How do you rollback a deployment?
+    A: kubectl rollout undo deploy/<name>
+
+14) Q: How do you rollback to a specific revision?
+    A: kubectl rollout undo deploy/<name> --to-revision=<N>
+
+DEBUGGING (CKA STYLE)
+---------------------
+
+15) Q: Rollout is stuck. What is the first command you run?
+    A: kubectl rollout status deploy/<name> and kubectl describe deploy/<name> (Events)
+
+16) Q: New pods are Running but the rollout still doesn’t complete. Why?
+    A: Pods might not be Ready (readinessProbe failing). Deployment waits for readiness.
+
+17) Q: What are the best places to find the real root cause of a failed rollout?
+    A:
+    - kubectl describe deploy/<name> (Events)
+    - kubectl describe rs <new-rs> (Events)
+    - kubectl describe pod <pod> (Events)
+    - kubectl logs <pod> / --previous
+
+18) Q: Deployment desired replicas is 3 but available replicas is 0. What could be wrong?
+    A:
+    - ImagePullBackOff / ErrImagePull
+    - FailedScheduling
+    - CrashLoopBackOff
+    - readinessProbe failing
+    Check Events + logs.
+
+19) Q: How do you confirm which ReplicaSet is the current one?
+    A: kubectl get rs
+       The newest RS usually has desired/current replicas > 0.
+       Also check pod-template-hash label; describe deployment shows current/old RS.
+
+20) Q: Why might Service traffic fail after a Deployment update?
+    A:
+    - Service endpoints include only Ready pods.
+    - If new pods are not Ready, endpoints may be empty or still point to old pods.
+    Check: kubectl get endpoints <svc>
+
+PRACTICAL COMMANDS
+------------------
+
+21) Q: How do you create, update image, and rollback (3 commands)?
+    A:
+    - kubectl create deploy web --image=nginx:1.25-alpine
+    - kubectl set image deploy/web web=nginx:1.26-alpine
+    - kubectl rollout undo deploy/web
+
+22) Q: How do you scale a deployment?
+    A: kubectl scale deploy/<name> --replicas=<N>
+
+EXAM SUMMARY
+------------
+
+23) Q: In one sentence, what is a Deployment’s job?
+    A: Maintain desired replicas and manage safe updates/rollbacks by controlling ReplicaSets.
+
+24) Q: In one sentence, what is the biggest difference between Deployment and ReplicaSet?
+    A: ReplicaSet keeps N pods running; Deployment manages ReplicaSets to handle versioned rollouts and rollbacks.
+
