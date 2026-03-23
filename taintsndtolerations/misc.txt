@@ -1,0 +1,86 @@
+TAINTS AND TOLERATIONS — MISC / QUICK REVISION
+==============================================
+
+Fast memory map
+---------------
+- taint = node says "stay away"
+- toleration = pod says "I can stay here"
+- affinity = pod says "I want this node"
+
+Most common exam trap
+---------------------
+- Toleration does NOT force placement
+- It only makes the tainted node eligible again
+
+Best dedicated-node pattern
+---------------------------
+If you want true dedicated placement:
+1. taint the node
+2. add matching toleration to the pod
+3. label the node
+4. use nodeSelector or node affinity on the pod
+
+Without step 4:
+- pod is allowed on the node
+- but not forced there
+
+Quick commands
+--------------
+Add taint:
+kubectl taint nodes worker-1 app=blue:NoSchedule
+
+Remove taint:
+kubectl taint nodes worker-1 app=blue:NoSchedule-
+
+Check node taints:
+kubectl describe node worker-1
+
+Check pod failure reason:
+kubectl describe pod mypod
+
+Quick matching reminder
+-----------------------
+A toleration matches if:
+- key matches
+- effect matches
+- and either:
+  - operator = Exists
+  - or operator = Equal with matching value
+
+Three effects at a glance
+-------------------------
+- NoSchedule = stop new pods
+- PreferNoSchedule = try to avoid
+- NoExecute = stop new pods + evict existing ones
+
+Automatic taints to remember
+----------------------------
+- not-ready
+- unreachable
+- memory-pressure
+- disk-pressure
+- pid-pressure
+- network-unavailable
+- unschedulable
+
+Why default tolerations appear in describe pod
+----------------------------------------------
+Kubernetes often adds:
+- node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+- node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+That means:
+- pod can remain for 5 minutes
+- then eviction may happen if node problem continues
+
+Best debugging order
+--------------------
+1. kubectl describe pod <pod>
+2. kubectl describe node <node>
+3. check pod tolerations
+4. check node taints
+5. check if some other scheduler rule is also blocking placement
+
+One-line summary
+----------------
+Taints protect nodes from unsuitable pods, tolerations let compatible pods pass that restriction, and the scheduler still decides final placement.
