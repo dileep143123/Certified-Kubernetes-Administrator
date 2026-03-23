@@ -1,0 +1,224 @@
+TAINTS AND TOLERATIONS (KodeKloud CKA Notes)
+============================================
+
+1) What are taints and tolerations?
+-----------------------------------
+- Taints are applied to nodes to repel pods.
+- Tolerations are applied to pods to allow them to be scheduled onto or remain on tainted nodes.
+- Taints are the opposite of node affinity:
+  - affinity attracts pods
+  - taints repel pods unless tolerated
+
+Important:
+- A toleration allows scheduling, but it does NOT guarantee scheduling.
+- The scheduler still checks:
+  - resources
+  - affinity / anti-affinity
+  - node selectors
+  - other constraints
+
+2) Beginner mental model
+------------------------
+- Taint = warning sign on a node
+  "Do not place normal pods here."
+- Toleration = permission slip on a pod
+  "I am allowed on nodes with this restriction."
+
+Easy memory:
+- taint = repel
+- toleration = permission
+- affinity = attraction
+
+3) Why do we need taints and tolerations?
+-----------------------------------------
+They are used to:
+- reserve nodes for special workloads
+- keep normal pods away from certain nodes
+- protect GPU / high-memory / expensive nodes
+- control behavior during node problems
+- dedicate nodes to one team or application
+
+4) What does a taint look like?
+-------------------------------
+A taint has 3 parts:
+- key
+- value
+- effect
+
+Example:
+kubectl taint nodes node1 key1=value1:NoSchedule
+
+Meaning:
+- key = key1
+- value = value1
+- effect = NoSchedule
+
+5) What does a toleration look like?
+------------------------------------
+Example with Equal:
+tolerations:
+- key: "key1"
+  operator: "Equal"
+  value: "value1"
+  effect: "NoSchedule"
+
+Example with Exists:
+tolerations:
+- key: "key1"
+  operator: "Exists"
+  effect: "NoSchedule"
+
+6) Equal vs Exists
+------------------
+- Equal
+  - key and value must match
+- Exists
+  - only key must exist
+  - value is ignored
+
+7) Matching rules
+-----------------
+A toleration matches a taint when:
+- key matches
+- effect matches
+- and either:
+  - operator = Exists
+  - or operator = Equal with matching value
+
+8) The 3 taint effects
+----------------------
+
+A) NoSchedule
+- New pods without a matching toleration will not be scheduled on the node.
+- Existing pods already running there are not removed.
+
+Memory line:
+- NoSchedule = no new entry
+
+B) PreferNoSchedule
+- Scheduler tries to avoid placing non-tolerating pods there.
+- But it is not strict.
+- If needed, pod can still be scheduled there.
+
+Memory line:
+- PreferNoSchedule = avoid if possible
+
+C) NoExecute
+- New non-tolerating pods will not be allowed to remain there.
+- Existing non-tolerating pods on the node are evicted.
+- If a pod has tolerationSeconds, it can stay only for that time.
+
+Memory line:
+- NoExecute = no entry + kick out
+
+9) What happens internally?
+---------------------------
+Step 1:
+- Taint is stored in the node spec.
+
+Step 2:
+- Pod is created and waits for scheduling.
+
+Step 3:
+- Scheduler checks:
+  - node taints
+  - pod tolerations
+  - resources
+  - other scheduling rules
+
+Step 4:
+- If the node is selected, kubelet on that node runs the pod.
+
+Step 5:
+- If a NoExecute taint exists or appears later, non-tolerating pods can be evicted.
+
+10) Very important misconception
+--------------------------------
+A toleration does NOT mean:
+- "Put my pod on that node"
+
+A toleration only means:
+- "My pod is allowed on that node"
+
+If you want guaranteed placement on dedicated nodes, use:
+- taints + tolerations
+- labels on nodes
+- nodeSelector or node affinity on pods
+
+11) Multiple taints
+-------------------
+A node can have many taints.
+A pod can have many tolerations.
+
+Kubernetes conceptually:
+- ignores the taints the pod tolerates
+- looks at remaining taints
+
+If remaining taints include:
+- NoSchedule -> pod won't schedule there
+- PreferNoSchedule -> scheduler will try to avoid it
+- NoExecute -> pod may be rejected or evicted
+
+12) Automatic taints added by Kubernetes
+----------------------------------------
+Kubernetes can automatically taint nodes for conditions like:
+- node.kubernetes.io/not-ready
+- node.kubernetes.io/unreachable
+- node.kubernetes.io/memory-pressure
+- node.kubernetes.io/disk-pressure
+- node.kubernetes.io/pid-pressure
+- node.kubernetes.io/network-unavailable
+- node.kubernetes.io/unschedulable
+
+13) Default tolerations you often see
+-------------------------------------
+Many pods automatically get tolerations for:
+- not-ready
+- unreachable
+
+Usually with:
+- NoExecute
+- tolerationSeconds=300
+
+That is why kubectl describe pod often shows:
+- node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+- node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+14) Manual scheduling edge case
+-------------------------------
+If you set:
+spec:
+  nodeName: node1
+
+Then:
+- scheduler is bypassed
+- NoSchedule is not checked by the scheduler
+- but NoExecute can still affect the pod later
+
+15) Common use cases
+--------------------
+- reserve GPU nodes
+- reserve costly nodes
+- dedicate nodes to a team/app
+- handle node failures and pressure
+- keep regular apps away from special nodes
+
+16) Common commands
+-------------------
+Add taint:
+kubectl taint nodes node1 app=blue:NoSchedule
+
+Remove taint:
+kubectl taint nodes node1 app=blue:NoSchedule-
+
+Check node taints:
+kubectl describe node node1
+
+Check pod events:
+kubectl describe pod <pod-name>
+
+17) One-line summary
+--------------------
+- Taints are node-side restrictions.
+- Tolerations are pod-side allowances.
+- Toleration gives compatibility, not guaranteed placement.
