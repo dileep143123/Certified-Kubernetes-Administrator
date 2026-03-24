@@ -1,3 +1,6 @@
+# create the taint on the node first:
+# kubectl taint nodes <node-name> app=red:NoExecute
+
 apiVersion: v1
 kind: Pod
 metadata:
