@@ -1,7 +1,5 @@
 <img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=260&color=0:030712,20:0F172A,45:111827,70:1E293B,100:000000&text=Certified%20Kubernetes%20Administrator&fontSize=40&fontColor=38BDF8&fontAlignY=36&desc=%20DevOps%20CKA%20Notes%20%7C%20Questions%20%7C%20Practice&descAlignY=58&animation=fadeIn" />
-
-<h1 align="center">☸️ Certified Kubernetes Administrator</h1>
-
+<!-- <h1 align="center">☸️ Certified Kubernetes Administrator</h1> -->
 <p align="center">
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=38BDF8&center=true&vCenter=true&width=980&lines=Premium+Cyber+DevOps+CKA+Preparation+Repository;Architecture+%7C+etcd+%7C+Scheduler+%7C+Kubelet+%7C+API+Server;Notes+%7C+Questions+%7C+Hands-on+Practice;Learn+Kubernetes+one+component+at+a+time" alt="Typing SVG" />
 </p>
