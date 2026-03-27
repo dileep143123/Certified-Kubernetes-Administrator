@@ -1,0 +1,72 @@
+MISC - DAEMONSET
+
+1. Easy Memory Line
+Deployment = some number of Pods
+DaemonSet = one Pod on every matching node
+
+2. Best Use Cases
+Use DaemonSet when the workload is tied to the node, not tied to application replica scaling.
+
+3. Typical Examples to Remember for Exam
+- kube-proxy
+- Fluentd / Fluent Bit
+- Node Exporter
+- Calico / Flannel agents
+
+4. Common Trap
+Students think “DaemonSet means every node in the whole cluster.”
+Correct understanding:
+DaemonSet means every eligible node.
+
+5. Another Common Trap
+DaemonSet Pods may not run on control plane nodes unless tolerations are added.
+
+6. Fast Troubleshooting Commands
+kubectl get ds -A
+kubectl describe ds <name> -n <namespace>
+kubectl get pods -o wide -n <namespace>
+kubectl get nodes --show-labels
+kubectl describe node <node-name>
+kubectl describe pod <pod-name> -n <namespace>
+
+7. YAML Reminder
+Always verify:
+- selector labels
+- template labels
+- nodeSelector
+- tolerations
+- image
+
+8. Imperative Trick
+Usually create DaemonSet using YAML.
+A practical shortcut:
+Create a deployment YAML with dry-run, then edit it into a DaemonSet.
+
+9. Exam Tip
+If the task says:
+“Run a logging/monitoring/networking agent on every node”
+think DaemonSet immediately.
+
+10. Control Plane Tip
+If DaemonSet is missing only on master/control-plane node, check taints first.
+
+11. Debugging Mindset
+Missing Pod on one node usually means:
+- node not eligible
+- taint issue
+- Pod failed after scheduling
+
+12. Important Thought Process
+Question to ask:
+“Is this workload cluster-app oriented or node-agent oriented?”
+If node-agent oriented, DaemonSet is often the right answer.
+
+13. Update Strategy Exam Reminder
+RollingUpdate = automatic gradual replacement
+OnDelete = manual Pod deletion needed for update
+
+14. Real-World Behavior
+DaemonSet is ideal for background infrastructure services that should closely follow cluster node membership.
+
+15. One-liner Definition
+A DaemonSet ensures one Pod runs on every eligible node in the cluster.

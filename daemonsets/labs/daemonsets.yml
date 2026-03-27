@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: daemonset-lab
+  namespace: ds-lab
+spec:
+  selector:
+    matchLabels:
+      app: daemonset-lab
+  template:
+    metadata:
+      labels:
+        app: daemonset-lab
+    spec:
+      containers:
+        - name: daemonset-container
+          image: busybox:1.28
+          command:
+            - sh
+            - -c
+            - |
+              while true; do
+                echo "Daemonset pod is running on $(hostname)";
+                sleep 20;
+                done
