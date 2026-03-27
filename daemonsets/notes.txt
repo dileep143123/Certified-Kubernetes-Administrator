@@ -1,0 +1,151 @@
+DAEMONSET - DETAILED NOTES
+
+1. Definition
+A DaemonSet is a Kubernetes workload resource that ensures one Pod runs on every eligible node in the cluster. It is mainly used for node-level infrastructure workloads.
+
+2. Core Idea
+Deployment = fixed number of replicas
+DaemonSet = one Pod per eligible node
+
+3. Common Use Cases
+- kube-proxy
+- CNI/network agents
+- monitoring agents
+- log collectors
+- security agents
+- storage/node plugins
+
+4. Why DaemonSet Exists
+Some workloads must exist on each node rather than as random replicas in the cluster. Examples include networking, logging, and node metrics collection.
+
+5. Internal Components Involved
+- kube-apiserver: accepts DaemonSet object
+- etcd: stores DaemonSet state
+- kube-controller-manager: runs DaemonSet controller
+- kube-scheduler: schedules Pods
+- kubelet: runs Pods on node
+
+6. Internal Working
+- User creates DaemonSet
+- API server stores it
+- DaemonSet controller watches nodes and DaemonSet objects
+- Controller identifies eligible nodes
+- One Pod is created per eligible node
+- Scheduler binds Pods to nodes
+- kubelet runs them
+
+7. Dynamic Nature
+The number of Pods in a DaemonSet changes based on the number of matching nodes in the cluster.
+
+8. No Replicas Field
+DaemonSet does not use a replicas field like Deployment. Pod count is determined by matching nodes.
+
+9. Node Eligibility
+A node is considered eligible based on:
+- nodeSelector
+- nodeAffinity
+- taints/tolerations
+- other scheduling rules
+
+10. Selector Importance
+spec.selector.matchLabels must match spec.template.metadata.labels.
+If these do not match, the DaemonSet will not manage the Pods correctly.
+
+11. Restricting DaemonSet to Specific Nodes
+You can restrict DaemonSet Pods to specific nodes using:
+- nodeSelector
+- nodeAffinity
+
+12. Tolerations
+Tolerations are often important for DaemonSets because special nodes may have taints.
+Common use case: allowing DaemonSet Pods on control plane nodes.
+
+13. Control Plane Scheduling
+To run a DaemonSet on control plane nodes, tolerations may be needed for taints such as:
+node-role.kubernetes.io/control-plane:NoSchedule
+
+14. Reconciliation Loop
+The DaemonSet controller continuously checks whether every eligible node has the required Pod. If not, it creates or reconciles Pods to reach desired state.
+
+15. Behavior on Node Add
+If a new matching node joins the cluster, the DaemonSet creates a Pod for it automatically.
+
+16. Behavior on Node Remove
+If a node leaves the cluster, its DaemonSet Pod is removed with the node and no longer maintained.
+
+17. Update Strategies
+Available update strategies:
+- RollingUpdate
+- OnDelete
+
+18. RollingUpdate
+Pods are gradually updated when the DaemonSet Pod template changes.
+
+19. OnDelete
+Old Pods are not automatically replaced after template change. Manual deletion is required to create new Pods with updated template.
+
+20. Useful Commands
+kubectl get ds
+kubectl describe ds <name>
+kubectl get pods -o wide
+kubectl get nodes --show-labels
+kubectl describe node <node-name>
+kubectl get ds <name> -o yaml
+
+21. kubectl get ds Columns
+- DESIRED: nodes that should run the Pod
+- CURRENT: nodes currently running the Pod
+- READY: Pods that are ready
+- UP-TO-DATE: Pods matching latest template
+- AVAILABLE: Pods considered available
+
+22. Troubleshooting Checklist
+- Is the DaemonSet present?
+- Is DESIRED count correct?
+- Do node labels match?
+- Is nodeSelector correct?
+- Is nodeAffinity correct?
+- Are node taints blocking scheduling?
+- Are tolerations present?
+- Is image valid?
+- Is Pod crashing?
+- Is namespace correct?
+
+23. Common Issues
+- selector mismatch
+- wrong labels
+- no toleration for tainted nodes
+- image pull failure
+- CrashLoopBackOff
+- insufficient resources
+- wrong namespace
+
+24. DaemonSet vs Deployment
+Deployment:
+- fixed replicas
+- scheduler places Pods anywhere
+- suitable for apps
+
+DaemonSet:
+- one Pod per eligible node
+- suitable for node-level infra services
+
+25. DaemonSet vs Static Pod
+Static Pod:
+- managed directly by kubelet from local files
+- tied to specific node
+
+DaemonSet:
+- managed centrally by Kubernetes API and controllers
+- automatically scales with matching nodes
+
+26. CKA-Relevant Skills
+- identify DaemonSet use cases
+- create/edit DaemonSet YAML
+- add nodeSelector
+- add tolerations
+- verify Pod placement on nodes
+- troubleshoot why a node is missing a DaemonSet Pod
+
+27. Strong Mental Model
+A DaemonSet is a controller-managed node-scoped workload that ensures one Pod exists on every eligible node.

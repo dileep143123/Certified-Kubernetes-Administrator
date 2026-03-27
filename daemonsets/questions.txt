@@ -1,0 +1,111 @@
+1. What is a DaemonSet in Kubernetes?
+A DaemonSet is a workload object that ensures one Pod runs on every eligible node in the cluster.
+
+2. What is the main difference between a DaemonSet and a Deployment?
+A Deployment manages a fixed number of replicas, while a DaemonSet manages one Pod per eligible node.
+
+3. Where is DaemonSet commonly used?
+It is commonly used for node-level infrastructure workloads such as log collectors, monitoring agents, kube-proxy, network plugins, and security agents.
+
+4. Which controller manages DaemonSets?
+The DaemonSet controller inside kube-controller-manager manages DaemonSets.
+
+5. Does a DaemonSet always run on all nodes?
+No. It runs on all eligible nodes based on labels, affinity rules, taints/tolerations, and scheduling constraints.
+
+6. What happens when a new node joins the cluster and matches a DaemonSet?
+The DaemonSet controller notices the new node and creates a Pod for that node.
+
+7. What happens when a node is removed from the cluster?
+The Pod running on that node disappears along with the node, and the DaemonSet no longer maintains it there.
+
+8. Does a DaemonSet use replicas?
+No. It does not use a replicas field. The number of Pods depends on the number of matching nodes.
+
+9. Which Kubernetes component stores the DaemonSet object?
+etcd stores the object through the kube-apiserver.
+
+10. Which component actually runs the DaemonSet Pod on the node?
+The kubelet on the target node runs the Pod.
+
+11. How does Kubernetes know which Pods belong to a DaemonSet?
+Through spec.selector.matchLabels, which must match the labels in spec.template.metadata.labels.
+
+12. What happens if selector labels and template labels do not match?
+The DaemonSet will not properly manage its Pods and may fail to behave as expected.
+
+13. Can DaemonSet Pods be restricted to certain nodes only?
+Yes. This can be done using nodeSelector, nodeAffinity, or other scheduling rules.
+
+14. Why are tolerations important in DaemonSets?
+They allow DaemonSet Pods to run on tainted nodes such as control plane nodes or specially reserved nodes.
+
+15. Why might a DaemonSet Pod not run on a control plane node?
+Because the control plane node often has a NoSchedule taint and the DaemonSet may not have the required toleration.
+
+16. Give an example of a real-world DaemonSet workload.
+Fluentd, Fluent Bit, kube-proxy, Calico node agent, or Node Exporter.
+
+17. How can you list all DaemonSets in the cluster?
+kubectl get daemonsets
+or
+kubectl get ds
+
+18. How do you get detailed information about a DaemonSet?
+kubectl describe ds <daemonset-name>
+
+19. What does DESIRED mean in kubectl get ds output?
+It means the number of nodes that should be running a DaemonSet Pod.
+
+20. What does CURRENT mean in kubectl get ds output?
+It means the number of nodes currently running a DaemonSet Pod.
+
+21. What does READY mean in kubectl get ds output?
+It means the number of DaemonSet Pods that are currently Ready.
+
+22. What does UP-TO-DATE mean in kubectl get ds output?
+It means how many Pods match the latest DaemonSet Pod template.
+
+23. What does AVAILABLE mean in kubectl get ds output?
+It means how many Pods are considered available for use.
+
+24. What update strategies are available for DaemonSet?
+RollingUpdate and OnDelete.
+
+25. What does RollingUpdate do in a DaemonSet?
+It updates Pods gradually across nodes when the Pod template changes.
+
+26. What does OnDelete do in a DaemonSet?
+It does not automatically replace old Pods after template updates. New Pods are created only when old ones are manually deleted.
+
+27. Why is DaemonSet suitable for monitoring agents?
+Because monitoring agents often need to run on every node to collect node-level metrics.
+
+28. How is a DaemonSet different from a Static Pod?
+A Static Pod is managed directly by kubelet from local files, while a DaemonSet is centrally managed through the Kubernetes API and controller loop.
+
+29. What is the reconciliation loop in the context of DaemonSet?
+It is the continuous process where the DaemonSet controller compares desired state and actual state and fixes differences.
+
+30. What are the most common reasons a DaemonSet Pod is missing from a node?
+Label mismatch, nodeSelector issues, taints without tolerations, image pull failures, Pod crashes, or resource problems.
+
+31. Which commands are most useful for troubleshooting a DaemonSet?
+kubectl get ds
+kubectl describe ds <name>
+kubectl get pods -o wide
+kubectl get nodes --show-labels
+kubectl describe node <node-name>
+kubectl describe pod <pod-name>
+
+32. Can a DaemonSet be created imperatively easily like a Deployment?
+Usually it is easier and more practical to create a DaemonSet using YAML.
+
+33. Why is a DaemonSet called “DaemonSet”?
+Because it is intended for background node-level services, similar to daemons in traditional operating systems.
+
+34. Can a DaemonSet run more than one Pod on the same eligible node by default?
+No. By design, it ensures one Pod per eligible node.
+
+35. Is DaemonSet useful for normal frontend or API application scaling?
+Generally no. Deployment is more suitable for normal application scaling.
