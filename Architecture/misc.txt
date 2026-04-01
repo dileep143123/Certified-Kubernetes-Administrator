@@ -25,4 +25,4 @@ Control plane
     1. Kube-ApiServer
     2. scheduler
     3. Kube-controller-manager
-    4. ETCD
+    4. ETCD : k-v pair
