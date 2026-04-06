@@ -1,0 +1,144 @@
+1. What is the purpose of command and args in Kubernetes?
+Answer:
+The purpose of command and args is to control what process starts inside a container and what values are passed to that process when the container starts.
+
+2. What does command mean in Kubernetes?
+Answer:
+In Kubernetes, command defines the executable or startup command that should run inside the container.
+
+3. What does args mean in Kubernetes?
+Answer:
+In Kubernetes, args defines the arguments that are passed to the command when the container starts.
+
+4. What is the relationship between command and args?
+Answer:
+command tells Kubernetes what to run, and args tells Kubernetes what values to pass to that command.
+
+5. What is the Docker equivalent of Kubernetes command?
+Answer:
+Kubernetes command is equivalent to Docker ENTRYPOINT.
+
+6. What is the Docker equivalent of Kubernetes args?
+Answer:
+Kubernetes args is equivalent to Docker CMD.
+
+7. If neither command nor args is specified in the Pod spec, what happens?
+Answer:
+If neither command nor args is specified, Kubernetes uses the default ENTRYPOINT and CMD defined in the container image.
+
+8. If only args is specified and command is not specified, what happens?
+Answer:
+If only args is specified, Kubernetes keeps the image’s default command/ENTRYPOINT and replaces or supplies the arguments with the values provided in args.
+
+9. If both command and args are specified, what happens?
+Answer:
+If both command and args are specified, Kubernetes overrides the image defaults and runs the exact command and arguments defined in the Pod spec.
+
+10. Why are command and args often written as arrays in YAML?
+Answer:
+They are written as arrays so that the executable and each argument are passed clearly and separately, without shell parsing confusion.
+
+11. Give a simple example of command and args.
+Answer:
+Example:
+command: ["sleep"]
+args: ["3600"]
+This means the container runs:
+sleep 3600
+
+12. What happens in this example?
+command: ["echo"]
+args: ["hello"]
+Answer:
+The container runs:
+echo hello
+
+13. When should we use /bin/sh -c in Kubernetes?
+Answer:
+We use /bin/sh -c when we need shell features like loops, multiple commands, pipes, redirection, variable expansion, or command chaining.
+
+14. Give an example of using /bin/sh -c.
+Answer:
+Example:
+command: ["/bin/sh"]
+args: ["-c", "while true; do echo hello; sleep 10; done"]
+This means the shell executes the full script string.
+
+15. Why is /bin/sh -c needed for loops and multiple commands?
+Answer:
+Because loops, semicolons, pipes, &&, ||, and similar constructs are shell syntax, not direct executable arguments. Without a shell, Kubernetes cannot interpret them.
+
+16. What is the meaning of this configuration?
+command: ["printenv"]
+args: ["HOSTNAME"]
+Answer:
+The container runs:
+printenv HOSTNAME
+
+17. Can command and args use environment variables?
+Answer:
+Yes, Kubernetes can expand environment variables in command and args using the $(VAR_NAME) format.
+
+18. Give an example of env variable usage in args.
+Answer:
+Example:
+env:
+- name: MESSAGE
+  value: "hello world"
+command: ["/bin/echo"]
+args: ["$(MESSAGE)"]
+This prints:
+hello world
+
+19. Can command and args be modified on an already running Pod?
+Answer:
+No. Once the Pod is created, command and args cannot be changed for that existing Pod. The Pod must be recreated.
+
+20. If a Pod is managed by a Deployment and we change command or args, what happens?
+Answer:
+Changing command or args in a Deployment Pod template triggers a rollout, and new Pods are created with the updated values.
+
+21. Why do KodeKloud labs often use sleep 1000 or sleep 3600?
+Answer:
+Because sleep keeps the container alive for a long time, making it easier to inspect, exec into, troubleshoot, and observe Pod behavior.
+
+22. Why do labs often use echo or printenv?
+Answer:
+Because echo and printenv make it easy to see exactly what command and args are doing through container logs.
+
+23. What is the difference between direct command execution and shell-based execution?
+Answer:
+Direct command execution runs the executable exactly as given, while shell-based execution runs through a shell like /bin/sh -c, which can interpret shell syntax.
+
+24. Why is command and args an important topic for the CKA exam?
+Answer:
+Because many troubleshooting and manifest questions require understanding how containers start, how to override image defaults, and how to write correct Pod specs.
+
+25. What is the safest mental model for command and args?
+Answer:
+command = what to run
+args = what to pass to it
+
+26. What is a common mistake beginners make with command and args?
+Answer:
+A common mistake is thinking command means Docker CMD, but in Kubernetes command maps to Docker ENTRYPOINT.
+
+27. What is another common mistake with shell commands?
+Answer:
+A common mistake is writing loops or multiple commands directly in args without using /bin/sh -c.
+
+28. What happens if we write:
+command: ["sleep 3600"]
+instead of:
+command: ["sleep"]
+args: ["3600"]
+Answer:
+The first form may fail because Kubernetes tries to find an executable literally named "sleep 3600". The second form is correct because it separates the executable from its argument.
+
+29. What is the role of kubectl run with --command?
+Answer:
+kubectl run with --command tells kubectl to treat the values after -- as the container command instead of only arguments.
+
+30. Why is understanding command and args useful in real-world Kubernetes?
+Answer:
+Because applications often need startup overrides, debug commands, custom scripts, or different runtime behavior from what is baked into the image.

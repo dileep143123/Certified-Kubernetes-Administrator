@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cmdandargs-pod
+  namespace: cna
+spec:
+  containers:
+    - name: cna-container
+      image: nginx:1.25-alpine
+      command: ["echo"]
+      args: ["Hello from command and args"]

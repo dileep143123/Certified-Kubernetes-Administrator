@@ -1,0 +1,129 @@
+COMMAND AND ARGS IN KUBERNETES - DETAILED NOTES
+
+1. FUNDAMENTAL IDEA
+- command and args control what process runs inside a container.
+- command defines the executable to start.
+- args defines the parameters passed to that executable.
+
+2. SIMPLE MENTAL MODEL
+- command = what to run
+- args = what to pass to it
+
+3. DOCKER MAPPING
+- Kubernetes command maps to Docker ENTRYPOINT
+- Kubernetes args maps to Docker CMD
+
+4. DEFAULT IMAGE BEHAVIOR
+- If command and args are not specified, Kubernetes uses the image defaults.
+- These defaults usually come from the container image definition.
+
+5. OVERRIDING IMAGE DEFAULTS
+- If only args is specified, Kubernetes keeps the image’s default executable and changes the arguments.
+- If both command and args are specified, Kubernetes overrides the image defaults completely.
+
+6. BASIC EXAMPLE
+- command: ["sleep"]
+- args: ["3600"]
+- This means:
+  sleep 3600
+
+7. ANOTHER BASIC EXAMPLE
+- command: ["echo"]
+- args: ["hello"]
+- This means:
+  echo hello
+
+8. WHY ARRAY FORM IS USED
+- Kubernetes expects the executable and arguments separately.
+- Array form avoids ambiguity and shell parsing issues.
+- Good style:
+  command: ["sleep"]
+  args: ["1000"]
+
+9. DIRECT EXECUTION VS SHELL EXECUTION
+- Direct execution runs the exact executable and arguments.
+- Shell execution runs through /bin/sh -c and allows shell syntax.
+
+10. WHEN TO USE /bin/sh -c
+- Use it when you need:
+  - loops
+  - multiple commands
+  - pipes
+  - redirection
+  - shell operators like && and ||
+  - shell variable handling
+
+11. SHELL EXAMPLE
+- command: ["/bin/sh"]
+- args: ["-c", "while true; do echo hello; sleep 10; done"]
+- This runs the given shell script string.
+
+12. IMPORTANT POINT
+- Shell syntax does not work automatically.
+- If you need shell features, you must explicitly start a shell.
+
+13. ENV VARIABLES IN COMMAND AND ARGS
+- Kubernetes supports environment variable expansion using $(VAR_NAME).
+- Example:
+  env:
+  - name: MESSAGE
+    value: "hello world"
+  command: ["/bin/echo"]
+  args: ["$(MESSAGE)"]
+
+14. WHY THIS TOPIC IS IMPORTANT
+- command and args are commonly used in:
+  - Pod creation
+  - init containers
+  - troubleshooting
+  - custom startup logic
+  - temporary debug workloads
+  - exam labs
+
+15. POD IMMUTABILITY
+- command and args cannot be changed on an already created Pod.
+- If you need to change them:
+  - delete and recreate the Pod
+  - or update the Deployment template so new Pods are rolled out
+
+16. IN DEPLOYMENTS
+- command and args are part of the Pod template.
+- Changing them triggers a rollout because .spec.template changes.
+
+17. COMMON LAB PATTERNS
+- sleep 1000 / sleep 3600:
+  used to keep a Pod alive for inspection
+- echo hello:
+  used to verify startup behavior quickly
+- printenv:
+  used to verify arguments or environment variable usage
+- sh -c:
+  used to run loops or multiple commands
+
+18. COMMON BEGINNER CONFUSION
+- Many learners think Kubernetes command means Docker CMD.
+- That is incorrect.
+- Kubernetes command = Docker ENTRYPOINT
+- Kubernetes args = Docker CMD
+
+19. COMMON EXECUTION FLOW
+- image provides default startup behavior
+- Pod spec may override it
+- kubelet starts the container with the final resolved command and args
+
+20. EXAM MINDSET
+- If question asks what process will run, inspect:
+  - image default behavior
+  - command
+  - args
+- If shell syntax is present, check whether /bin/sh -c is used
+- If Pod is already created, remember command/args are not directly mutable
+
+21. KUBECTL RUN
+- kubectl run can be used to generate quick Pods
+- --command makes kubectl treat the following value as command
+- values after -- are commonly used as command or args depending on usage
+
+22. GOLDEN RULE
+- Use direct command/args when simple execution is enough
+- Use /bin/sh -c only when shell behavior is actually needed

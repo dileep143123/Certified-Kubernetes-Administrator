@@ -1,0 +1,60 @@
+COMMAND AND ARGS IN KUBERNETES - MISC TO REMEMBER
+
+1. command = executable
+2. args = parameters to the executable
+
+3. Kubernetes command maps to Docker ENTRYPOINT.
+4. Kubernetes args maps to Docker CMD.
+
+5. If neither is specified, image defaults are used.
+
+6. If only args is specified, image executable stays the same.
+
+7. If both are specified, image defaults are overridden.
+
+8. Use array form, not one big string.
+
+9. Correct:
+   command: ["sleep"]
+   args: ["3600"]
+
+10. Be careful:
+   command: ["sleep 3600"]
+   is usually wrong
+
+11. Use /bin/sh -c only when you need shell features.
+
+12. Loops, pipes, &&, ||, ; need a shell.
+
+13. Example shell form:
+   command: ["/bin/sh"]
+   args: ["-c", "echo hello; sleep 30"]
+
+14. command and args cannot be changed on an already created Pod.
+
+15. In a Deployment, changing command or args causes a rollout.
+
+16. sleep is often used to keep Pods alive for inspection.
+
+17. echo and printenv are often used for understanding behavior quickly.
+
+18. Environment variables can be used with $(VAR_NAME).
+
+19. Very common confusion:
+   Kubernetes command is NOT Docker CMD.
+
+20. Fast memory trick:
+   command = what to run
+   args = what to pass
+
+21. If shell syntax is not working, check whether /bin/sh -c was used.
+
+22. If a Pod exits immediately, inspect the command and args first.
+
+23. For CKA, understand behavior, not just memorize field names.
+
+24. Best practical habit:
+   write a simple Pod with sleep
+   then try echo
+   then try sh -c loop
+   then compare behavior
