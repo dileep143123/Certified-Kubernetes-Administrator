@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multiple-command-pod
+  namespace: cna
+spec:
+  containers:
+    - name: multiple-command-container
+      image: nginx:1.25-alpine
+      command: ["/bin/sh"]
+      args:
+        - "-c"
+        - "echo start; date; echo end; sleep 3600"
