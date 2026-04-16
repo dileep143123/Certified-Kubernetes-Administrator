@@ -1,0 +1,49 @@
+ROLLING UPDATES AND ROLLBACKS - MISC TO REMEMBER
+
+1. Deployment is the main object for rolling updates and rollbacks.
+
+2. Rolling update is gradual replacement, not in-place pod editing.
+
+3. Pod template change = rollout.
+Replica count change = scale, not rollout.
+
+4. Default Deployment strategy is RollingUpdate.
+
+5. Recreate removes all old pods first, which can cause downtime.
+
+6. maxUnavailable controls how many desired pods may go unavailable.
+
+7. maxSurge controls how many extra pods may be created temporarily.
+
+8. Readiness probes are very important during rolling updates.
+
+9. kubectl get rs is very useful during rollouts.
+
+10. kubectl rollout status helps verify whether rollout completed successfully.
+
+11. kubectl rollout history helps inspect revisions.
+
+12. kubectl rollout undo reverts to previous revision.
+
+13. kubectl rollout undo --to-revision=N reverts to a specific revision.
+
+14. A bad image or broken readiness probe can stall a rollout.
+
+15. Rollback itself is also a rollout process.
+
+16. Old ReplicaSets are part of rollback history.
+
+17. Scaling a Deployment does not create a new revision.
+
+18. Image update usually creates a new revision because it changes the pod template.
+
+19. During troubleshooting, think:
+deployment -> replicaset -> pods
+
+20. Golden command set:
+- kubectl get deploy
+- kubectl get rs
+- kubectl get pods
+- kubectl rollout status deployment/<name>
+- kubectl rollout history deployment/<name>
+- kubectl rollout undo deployment/<name>

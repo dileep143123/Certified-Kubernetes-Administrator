@@ -1,0 +1,157 @@
+CONFIGURING ENVIRONMENT VARIABLES IN APPLICATIONS
+
+1. Core idea
+- Environment variables are key-value pairs passed to a process at startup.
+- In Kubernetes, they are configured per container.
+- Applications read them at runtime to determine configuration.
+
+2. Why they are used
+- Separate configuration from code
+- Reuse same image in different environments
+- Avoid hardcoding environment-specific values
+
+3. Where they are defined
+- spec.containers[].env
+- spec.containers[].envFrom
+
+4. Literal values using env
+Example:
+env:
+- name: APP_COLOR
+  value: blue
+- name: APP_MODE
+  value: production
+
+5. Using ConfigMap with env
+Example:
+env:
+- name: APP_COLOR
+  valueFrom:
+    configMapKeyRef:
+      name: app-config
+      key: APP_COLOR
+
+6. Using Secret with env
+Example:
+env:
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: app-secret
+      key: DB_PASSWORD
+
+7. Using envFrom
+- Imports all keys from ConfigMap or Secret
+Example:
+envFrom:
+- configMapRef:
+    name: app-config
+- secretRef:
+    name: app-secret
+
+8. env vs envFrom
+env:
+- define one by one
+- can rename variables
+- can mix literals and references
+- best for precise control
+
+envFrom:
+- imports all keys automatically
+- easier when many variables are needed
+- variable names remain same as keys
+
+9. Downward API using fieldRef
+Used to inject Pod/container metadata
+Example:
+env:
+- name: MY_POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: MY_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+- name: MY_NODE
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+- name: MY_POD_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
+
+10. resourceFieldRef
+Used to inject resource requests/limits as env vars
+Example:
+env:
+- name: CPU_LIMIT
+  valueFrom:
+    resourceFieldRef:
+      resource: limits.cpu
+
+11. Important update behavior
+- Env vars are loaded when the container starts.
+- Updating ConfigMap/Secret does NOT automatically update env vars in running Pods.
+- Restart Pod or rollout restart Deployment to pick up changes.
+
+12. Mounted ConfigMap/Secret vs env vars
+- Mounted ConfigMap/Secret files can be updated eventually
+- Environment variables do not update automatically in running processes
+
+13. Commands to create resources quickly
+Create ConfigMap:
+kubectl create configmap app-config --from-literal=APP_COLOR=blue --from-literal=APP_MODE=prod
+
+Create Secret:
+kubectl create secret generic app-secret --from-literal=DB_PASSWORD=password
+
+14. Debugging commands
+Check Pod YAML:
+kubectl get pod <pod-name> -o yaml
+
+Describe Pod:
+kubectl describe pod <pod-name>
+
+Print env vars inside container:
+kubectl exec -it <pod-name> -- env
+kubectl exec -it <pod-name> -- printenv
+
+Check ConfigMap:
+kubectl get configmap app-config -o yaml
+
+Check Secret:
+kubectl get secret app-secret -o yaml
+
+Decode Secret manually:
+echo 'cGFzc3dvcmQ=' | base64 -d
+
+15. Deployment behavior
+- Updating env vars in a Deployment changes Pod template
+- This triggers a new rollout
+- Use:
+kubectl rollout status deployment <name>
+kubectl rollout history deployment <name>
+
+16. Best practices
+- Use ConfigMap for non-sensitive values
+- Use Secret for sensitive values
+- Quote values like "true", "false", "8080"
+- Keep key names clean and consistent
+- Verify references carefully
+- Remember env vars are container-specific
+
+17. Common mistakes
+- Wrong indentation of env
+- Putting env under spec instead of under container
+- Using wrong ConfigMap/Secret key name
+- Expecting live update after ConfigMap change
+- Forgetting restart after env-backed config update
+- Confusing env vars with command/args
+
+18. Exam tips
+- Use kubectl create deployment --dry-run=client -o yaml to generate skeleton YAML
+- Edit quickly and add env/envFrom
+- Verify rollout
+- Exec into Pod and confirm variable presence

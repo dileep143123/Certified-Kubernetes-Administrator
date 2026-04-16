@@ -1,0 +1,39 @@
+MISC / GOTCHAS / THINGS TO REMEMBER
+
+1. Environment variables are injected at container start, not continuously synced.
+2. ConfigMap change does not auto-update env vars in already running Pods.
+3. Secret values are base64 encoded in manifest but decoded inside container.
+4. env is for specific variables; envFrom is for importing all keys.
+5. env vars are per container, not shared automatically across all containers in a Pod.
+6. Downward API = Pod metadata into container.
+7. resourceFieldRef = resource requests/limits into container.
+8. Always verify indentation:
+   spec:
+     containers:
+     - name: app
+       image: nginx
+       env:
+9. Use quotes for boolean/numeric-looking values:
+   value: "true"
+   value: "8080"
+10. If using variable substitution like $(APP_NAME), define APP_NAME first.
+11. If a Deployment env var changes, rollout happens because Pod template changes.
+12. Fast debug flow:
+   - kubectl describe pod
+   - kubectl get pod -o yaml
+   - kubectl exec -- env
+   - inspect ConfigMap/Secret
+13. base64 != encryption
+14. For exam speed:
+   - kubectl create configmap ...
+   - kubectl create secret generic ...
+   - kubectl edit deployment ...
+15. If app fails after env change, check:
+   - variable name
+   - indentation
+   - wrong key name
+   - Secret/ConfigMap existence
+   - app expects different variable name
+16. envFrom is convenient but less selective.
+17. ConfigMap/Secret mounted as volume behaves differently from env injection.
+18. The application must explicitly read the env vars; Kubernetes only injects them.
