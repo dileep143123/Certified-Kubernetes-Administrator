@@ -1,0 +1,129 @@
+ROLLING UPDATES AND ROLLBACKS - DETAILED NOTES
+
+1. PURPOSE
+- Rolling updates allow Kubernetes to update an application gradually.
+- This helps keep the application available during version changes.
+
+2. MAIN OBJECT USED
+- Deployment is the main Kubernetes object used for rolling updates and rollbacks.
+- A Deployment manages ReplicaSets and Pods.
+
+3. INTERNAL FLOW
+- Deployment created
+- Deployment creates ReplicaSet
+- ReplicaSet creates Pods
+- When pod template changes, Deployment creates a new ReplicaSet
+- New ReplicaSet scales up
+- Old ReplicaSet scales down
+
+4. VERY IMPORTANT IDEA
+- Pods are not usually updated in place.
+- Old pods are replaced by newly created pods.
+
+5. WHAT TRIGGERS A ROLLOUT
+- Changes under .spec.template trigger a rollout.
+- Examples:
+  - image change
+  - env var change
+  - command change
+  - probe change
+  - resource change
+
+6. WHAT DOES NOT TRIGGER A ROLLOUT
+- Scaling replicas does not create a new rollout revision.
+- Changing .spec.replicas changes count, not pod template version.
+
+7. DEFAULT STRATEGY
+- Deployment default strategy is RollingUpdate.
+
+8. ALTERNATIVE STRATEGY
+- Recreate
+- Recreate deletes all old pods first and then creates new pods.
+- This may cause downtime.
+
+9. ROLLING UPDATE CONTROLS
+- maxUnavailable = how many desired pods may be unavailable during update
+- maxSurge = how many extra pods may be created above desired count during update
+
+10. DEFAULT VALUES
+- Common defaults are 25% maxUnavailable and 25% maxSurge
+
+11. WHY THESE SETTINGS MATTER
+- They affect:
+  - availability
+  - rollout speed
+  - extra resource use during deployment
+
+12. ROLLOUT COMMANDS
+- kubectl rollout status deployment/<name>
+- kubectl rollout history deployment/<name>
+- kubectl rollout undo deployment/<name>
+- kubectl rollout undo deployment/<name> --to-revision=<n>
+
+13. UPDATE COMMANDS
+- kubectl set image deployment/<name> <container>=<image>
+- kubectl edit deployment <name>
+- kubectl apply -f <file>
+
+14. ROLLOUT HISTORY
+- Each meaningful pod template update creates a new revision
+- Example:
+  rev1 = old image
+  rev2 = new image
+  rev3 = another new image
+
+15. ROLLBACK
+- Rollback restores a previous Deployment revision
+- It is used when a newer rollout is broken or unstable
+
+16. IMPORTANT ROLLBACK IDEA
+- Rollback does not mean reusing deleted pods directly
+- It means restoring the previous desired template and rolling out that version again
+
+17. REPLICASETS DURING UPDATES
+- Old and new ReplicaSets may exist at the same time
+- Use kubectl get rs to inspect rollout behavior
+
+18. READINESS PROBES
+- Readiness probes are critical during rolling updates
+- New pods should become Ready before old pods are removed
+- This helps keep traffic flowing safely
+
+19. COMMON FAILURE REASONS
+- wrong image
+- bad config
+- missing env vars
+- app crash
+- readiness probe failure
+- startup issue
+
+20. TROUBLESHOOTING FLOW
+- kubectl get deployment
+- kubectl rollout status deployment/<name>
+- kubectl get rs
+- kubectl get pods
+- kubectl describe pod <pod-name>
+- kubectl logs <pod-name>
+
+21. DEPLOYMENT STATUS COLUMNS
+- READY = ready pods / desired pods
+- UP-TO-DATE = pods matching latest Deployment spec
+- AVAILABLE = pods available to serve traffic
+
+22. REVISION HISTORY LIMIT
+- revisionHistoryLimit controls how many old ReplicaSets are retained
+
+23. PAUSE AND RESUME
+- kubectl rollout pause deployment/<name>
+- kubectl rollout resume deployment/<name>
+
+24. BEST MENTAL MODEL
+- Deployment change -> new ReplicaSet -> new pods come up -> old ReplicaSet scales down
+- Rollback -> previous desired state restored -> stable version rolled out again
+
+25. CKA EXAM FOCUS
+- Know how to create/update Deployments
+- Know how to inspect rollout status/history
+- Know how to undo a bad rollout
+- Know that scaling is not the same as rollout
+- Know that ReplicaSets are central to Deployment version management

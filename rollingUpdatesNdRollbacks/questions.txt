@@ -1,0 +1,99 @@
+1. What is a rolling update in Kubernetes?
+Answer:
+A rolling update is a Deployment update strategy in which old pods are replaced gradually with new pods, instead of all being removed at once. This helps maintain application availability during updates.
+
+2. Which Kubernetes object mainly supports rolling updates?
+Answer:
+Deployments mainly support rolling updates. A Deployment manages ReplicaSets and Pods and handles rollout and rollback behavior.
+
+3. Does Kubernetes update existing pods in place during a rolling update?
+Answer:
+No. Kubernetes generally replaces old pods with new pods created from a new ReplicaSet. Pods are not usually modified in place.
+
+4. What internal objects are involved in a Deployment rollout?
+Answer:
+Deployment, ReplicaSet, and Pods. The Deployment creates a new ReplicaSet when the pod template changes, and that ReplicaSet creates new Pods.
+
+5. What triggers a new rollout in a Deployment?
+Answer:
+A change to the Deployment’s pod template under .spec.template triggers a rollout.
+
+6. Does changing the number of replicas trigger a new rollout revision?
+Answer:
+No. Changing .spec.replicas only scales the Deployment. It does not create a new rollout revision because the pod template is unchanged.
+
+7. What is the default Deployment strategy?
+Answer:
+The default strategy is RollingUpdate.
+
+8. What is the difference between RollingUpdate and Recreate?
+Answer:
+RollingUpdate replaces pods gradually to reduce downtime. Recreate deletes all old pods first and then creates new ones, which can cause downtime.
+
+9. What does maxUnavailable mean?
+Answer:
+maxUnavailable defines how many pods can be unavailable during the rolling update process.
+
+10. What does maxSurge mean?
+Answer:
+maxSurge defines how many extra pods above the desired replica count can be temporarily created during the update.
+
+11. Why are maxUnavailable and maxSurge important?
+Answer:
+They control the balance between availability, rollout speed, and temporary resource usage during updates.
+
+12. What are the default values commonly used for rolling updates if not specified?
+Answer:
+By default, Kubernetes commonly uses 25% for maxUnavailable and 25% for maxSurge.
+
+13. What command checks rollout status?
+Answer:
+kubectl rollout status deployment/<deployment-name>
+
+14. What command shows rollout history?
+Answer:
+kubectl rollout history deployment/<deployment-name>
+
+15. What command rolls back to the previous Deployment revision?
+Answer:
+kubectl rollout undo deployment/<deployment-name>
+
+16. How do you roll back to a specific revision?
+Answer:
+kubectl rollout undo deployment/<deployment-name> --to-revision=<revision-number>
+
+17. What command is commonly used to update a Deployment image quickly?
+Answer:
+kubectl set image deployment/<deployment-name> <container-name>=<image>
+
+18. Why is kubectl get rs useful during rolling updates?
+Answer:
+Because it shows the old and new ReplicaSets, which helps you understand how the Deployment is gradually shifting from old pods to new pods.
+
+19. Why are readiness probes important during rolling updates?
+Answer:
+Because Kubernetes should only consider a new pod safe for traffic when it is ready. Readiness probes help prevent old pods from being removed too early.
+
+20. What happens if a new version is broken during rollout?
+Answer:
+The rollout may stall or fail to complete. New pods may stay unhealthy, and the Deployment may not reach the desired available state.
+
+21. What is rollback in Kubernetes?
+Answer:
+Rollback means returning a Deployment to a previous revision of its pod template when a newer rollout is bad or unstable.
+
+22. Is rollback simply restarting deleted old pods?
+Answer:
+No. Rollback means restoring the previous desired Deployment template and rolling out pods that match that previous version.
+
+23. Why can a Deployment maintain rollback history?
+Answer:
+Because old ReplicaSets are retained and used as revision history for previous versions.
+
+24. What is revisionHistoryLimit?
+Answer:
+It is a Deployment setting that controls how many old ReplicaSets are kept for rollout history and possible rollback.
+
+25. What is the best mental model for a rolling update?
+Answer:
+Deployment changes create a new ReplicaSet, new pods are created gradually, old pods are removed gradually, and the update completes when the new ReplicaSet fully takes over.
