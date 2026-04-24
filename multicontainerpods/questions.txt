@@ -1,0 +1,680 @@
+questions.txt
+=============
+
+TOPIC: Multi-Container Pods - Questions and Answers
+
+------------------------------------------------------------
+Q1. What is a multi-container Pod?
+------------------------------------------------------------
+
+Answer:
+
+A multi-container Pod is a Kubernetes Pod that contains two or more containers.
+
+These containers run together inside the same Pod and are scheduled on the same node.
+
+Example:
+
+Pod:
+  - nginx container
+  - busybox container
+
+------------------------------------------------------------
+Q2. What was the first YAML used in the lab?
+------------------------------------------------------------
+
+Answer:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-pod
+spec:
+  containers:
+    - name: pod1
+      image: nginx:latest
+
+    - name: pod2
+      image: busybox:1.36
+
+------------------------------------------------------------
+Q3. What happened after applying the first YAML?
+------------------------------------------------------------
+
+Answer:
+
+The Pod was created, but it showed:
+
+READY: 1/2
+STATUS: CrashLoopBackOff
+
+This means one container was ready and one container was not ready.
+
+------------------------------------------------------------
+Q4. Which container was running successfully?
+------------------------------------------------------------
+
+Answer:
+
+The nginx container named pod1 was running successfully.
+
+pod1:
+  Image: nginx:latest
+  State: Running
+  Ready: True
+
+------------------------------------------------------------
+Q5. Which container went into CrashLoopBackOff?
+------------------------------------------------------------
+
+Answer:
+
+The BusyBox container named pod2 went into CrashLoopBackOff.
+
+pod2:
+  Image: busybox:1.36
+  State: Waiting
+  Reason: CrashLoopBackOff
+
+------------------------------------------------------------
+Q6. What does READY 1/2 mean?
+------------------------------------------------------------
+
+Answer:
+
+READY 1/2 means:
+
+- The Pod has 2 containers.
+- Only 1 container is ready.
+- One container is not ready or is restarting.
+
+In this lab:
+
+pod1 was ready.
+pod2 was not ready.
+
+------------------------------------------------------------
+Q7. What command was used to debug the Pod?
+------------------------------------------------------------
+
+Answer:
+
+kubectl describe pod multi-container-pod
+
+This command shows detailed information about:
+
+- Container state
+- Last state
+- Reason
+- Exit code
+- Restart count
+- Events
+
+------------------------------------------------------------
+Q8. What did kubectl describe show for the BusyBox container?
+------------------------------------------------------------
+
+Answer:
+
+It showed:
+
+State: Waiting
+Reason: CrashLoopBackOff
+
+Last State: Terminated
+Reason: Completed
+Exit Code: 0
+
+This means BusyBox completed successfully but exited immediately.
+
+------------------------------------------------------------
+Q9. What does Exit Code 0 mean?
+------------------------------------------------------------
+
+Answer:
+
+Exit Code 0 means the process inside the container completed successfully.
+
+It does not mean the container will keep running.
+
+------------------------------------------------------------
+Q10. Why did BusyBox exit immediately?
+------------------------------------------------------------
+
+Answer:
+
+BusyBox does not run a long-running service by default.
+
+If no command is provided, BusyBox starts, completes, and exits immediately.
+
+------------------------------------------------------------
+Q11. Why did BusyBox enter CrashLoopBackOff even though Exit Code was 0?
+------------------------------------------------------------
+
+Answer:
+
+Because the Pod restartPolicy defaults to Always.
+
+When BusyBox exited, kubelet restarted it.
+
+BusyBox exited again.
+
+This repeated multiple times.
+
+Then kubelet applied restart backoff, and the container entered CrashLoopBackOff.
+
+------------------------------------------------------------
+Q12. What is the default restartPolicy for a normal Pod?
+------------------------------------------------------------
+
+Answer:
+
+The default restartPolicy is Always.
+
+------------------------------------------------------------
+Q13. What is CrashLoopBackOff?
+------------------------------------------------------------
+
+Answer:
+
+CrashLoopBackOff means Kubernetes is repeatedly restarting a container that keeps exiting.
+
+After repeated restarts, kubelet waits for some time before trying again.
+
+This waiting period is called backoff.
+
+------------------------------------------------------------
+Q14. Does CrashLoopBackOff always mean application error?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+CrashLoopBackOff can also happen when a container exits successfully but too quickly.
+
+In this lab, BusyBox exited with:
+
+Reason: Completed
+Exit Code: 0
+
+But Kubernetes restarted it repeatedly because restartPolicy was Always.
+
+------------------------------------------------------------
+Q15. Why did nginx keep running but BusyBox did not?
+------------------------------------------------------------
+
+Answer:
+
+nginx has a default long-running process.
+
+BusyBox does not run a long-running service by default.
+
+So nginx stayed running, while BusyBox exited immediately.
+
+------------------------------------------------------------
+Q16. How was the BusyBox container fixed?
+------------------------------------------------------------
+
+Answer:
+
+A long-running command was added:
+
+command: ["sh", "-c", "sleep 3600"]
+
+This kept the BusyBox container running for 3600 seconds.
+
+------------------------------------------------------------
+Q17. What was the corrected YAML?
+------------------------------------------------------------
+
+Answer:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-pod
+spec:
+  containers:
+    - name: pod1
+      image: nginx:latest
+
+    - name: pod2
+      image: busybox:1.36
+      command: ["sh", "-c", "sleep 3600"]
+
+------------------------------------------------------------
+Q18. Why did kubectl apply fail after editing the Pod YAML?
+------------------------------------------------------------
+
+Answer:
+
+It failed because Pod specs are mostly immutable.
+
+Kubernetes does not allow changing the container command of an already-created Pod.
+
+The error said:
+
+spec: Forbidden: pod updates may not change fields other than ...
+
+------------------------------------------------------------
+Q19. What does immutable mean in Kubernetes?
+------------------------------------------------------------
+
+Answer:
+
+Immutable means something cannot be changed after creation.
+
+In Kubernetes, many Pod spec fields are immutable after the Pod is created.
+
+For example:
+
+- container command
+- container args
+- volume mounts
+- container structure
+
+cannot be changed directly on an existing Pod.
+
+------------------------------------------------------------
+Q20. What fields can usually be updated in an existing Pod?
+------------------------------------------------------------
+
+Answer:
+
+Kubernetes allows only limited Pod updates, such as:
+
+- container image
+- activeDeadlineSeconds
+- adding tolerations
+- terminationGracePeriodSeconds in limited cases
+
+Most other Pod spec fields are immutable.
+
+------------------------------------------------------------
+Q21. How was the immutable Pod error fixed?
+------------------------------------------------------------
+
+Answer:
+
+The old Pod was deleted:
+
+kubectl delete pod multi-container-pod
+
+Then the corrected YAML was applied again:
+
+kubectl apply -f multicontainerpod1.yml
+
+------------------------------------------------------------
+Q22. What happened after deleting and recreating the Pod?
+------------------------------------------------------------
+
+Answer:
+
+The Pod became healthy:
+
+READY: 2/2
+STATUS: Running
+RESTARTS: 0
+
+This means both containers were running and ready.
+
+------------------------------------------------------------
+Q23. What does READY 2/2 mean?
+------------------------------------------------------------
+
+Answer:
+
+READY 2/2 means:
+
+- The Pod has 2 containers.
+- Both containers are ready.
+
+------------------------------------------------------------
+Q24. How do you check logs of a specific container in a multi-container Pod?
+------------------------------------------------------------
+
+Answer:
+
+Use:
+
+kubectl logs <pod-name> -c <container-name>
+
+Example:
+
+kubectl logs multi-container-pod -c pod1
+
+kubectl logs multi-container-pod -c pod2
+
+------------------------------------------------------------
+Q25. Why is -c important in kubectl logs?
+------------------------------------------------------------
+
+Answer:
+
+In a multi-container Pod, Kubernetes needs to know which container's logs you want.
+
+The -c option specifies the container name.
+
+Example:
+
+kubectl logs multi-container-pod -c pod1
+
+------------------------------------------------------------
+Q26. Why were BusyBox logs empty after using sleep 3600?
+------------------------------------------------------------
+
+Answer:
+
+Because the command:
+
+sleep 3600
+
+does not print anything to stdout.
+
+The container was running, but it was not generating logs.
+
+------------------------------------------------------------
+Q27. How can we make BusyBox generate logs?
+------------------------------------------------------------
+
+Answer:
+
+Use a loop that prints output:
+
+command: ["sh", "-c", "while true; do echo busybox-running; sleep 10; done"]
+
+------------------------------------------------------------
+Q28. What was the purpose of the second multi-container Pod lab?
+------------------------------------------------------------
+
+Answer:
+
+The second lab was created to test communication between two containers inside the same Pod using localhost.
+
+------------------------------------------------------------
+Q29. What was the second Pod YAML?
+------------------------------------------------------------
+
+Answer:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-pod2
+spec:
+  containers:
+    - name: webapp
+      image: nginx:latest
+    - name: client
+      image: busybox:1.36
+      command: ["sh", "-c", "sleep 4800"]
+
+------------------------------------------------------------
+Q30. Which containers were present in multi-container-pod2?
+------------------------------------------------------------
+
+Answer:
+
+The Pod had two containers:
+
+1. webapp -> nginx:latest
+2. client -> busybox:1.36
+
+------------------------------------------------------------
+Q31. What command was used to exec into the BusyBox client container?
+------------------------------------------------------------
+
+Answer:
+
+kubectl exec -it multi-container-pod2 -c client -- sh
+
+------------------------------------------------------------
+Q32. What command was used to test localhost communication?
+------------------------------------------------------------
+
+Answer:
+
+Inside the BusyBox client container:
+
+wget -qO- http://localhost
+
+------------------------------------------------------------
+Q33. What output was received from wget localhost?
+------------------------------------------------------------
+
+Answer:
+
+The NGINX welcome page was returned.
+
+This confirmed that the BusyBox client container could reach the nginx webapp container using localhost.
+
+------------------------------------------------------------
+Q34. Why did localhost work between two containers?
+------------------------------------------------------------
+
+Answer:
+
+Containers inside the same Pod share the same network namespace.
+
+That means they share:
+
+- Same Pod IP
+- Same localhost
+- Same port space
+
+So the client container could reach nginx using:
+
+http://localhost
+
+------------------------------------------------------------
+Q35. Do containers inside the same Pod need a Service to communicate with each other?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+Containers inside the same Pod can communicate directly using localhost.
+
+A Service is needed when communication happens between different Pods.
+
+------------------------------------------------------------
+Q36. Why did wget fail inside the nginx container?
+------------------------------------------------------------
+
+Answer:
+
+The nginx image does not include wget by default.
+
+Container images are often minimal and only include the tools needed for their main purpose.
+
+------------------------------------------------------------
+Q37. Why did wget work inside the BusyBox container?
+------------------------------------------------------------
+
+Answer:
+
+BusyBox includes many small Linux utilities, including wget.
+
+So wget worked inside the BusyBox client container.
+
+------------------------------------------------------------
+Q38. Should we say SSH into a container?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+The correct term is:
+
+kubectl exec into the container
+
+We are not using SSH.
+
+We are using Kubernetes API through kubectl exec.
+
+------------------------------------------------------------
+Q39. What is the correct command to enter a container?
+------------------------------------------------------------
+
+Answer:
+
+kubectl exec -it <pod-name> -c <container-name> -- sh
+
+Example:
+
+kubectl exec -it multi-container-pod2 -c client -- sh
+
+------------------------------------------------------------
+Q40. What do containers inside the same Pod share?
+------------------------------------------------------------
+
+Answer:
+
+Containers inside the same Pod share:
+
+- Pod IP
+- Network namespace
+- localhost
+- Port space
+- Volumes if configured
+
+------------------------------------------------------------
+Q41. Do containers inside the same Pod automatically share files?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+Containers do not automatically share filesystems.
+
+To share files, we must configure a shared volume.
+
+Example:
+
+emptyDir
+
+------------------------------------------------------------
+Q42. What happens if two containers inside the same Pod try to use the same port?
+------------------------------------------------------------
+
+Answer:
+
+They will conflict because containers inside the same Pod share the same network namespace and port space.
+
+Example:
+
+If nginx is already using port 80, another container in the same Pod cannot also bind to port 80.
+
+------------------------------------------------------------
+Q43. What is the most important command for debugging container state?
+------------------------------------------------------------
+
+Answer:
+
+kubectl describe pod <pod-name>
+
+This shows:
+
+- Current state
+- Last state
+- Exit code
+- Events
+- Restart count
+
+------------------------------------------------------------
+Q44. What is the most important command for checking logs in a multi-container Pod?
+------------------------------------------------------------
+
+Answer:
+
+kubectl logs <pod-name> -c <container-name>
+
+Example:
+
+kubectl logs multi-container-pod -c pod1
+
+------------------------------------------------------------
+Q45. What is the most important command for entering a specific container?
+------------------------------------------------------------
+
+Answer:
+
+kubectl exec -it <pod-name> -c <container-name> -- sh
+
+Example:
+
+kubectl exec -it multi-container-pod2 -c client -- sh
+
+------------------------------------------------------------
+Q46. What is the main CKA lesson from the BusyBox CrashLoopBackOff issue?
+------------------------------------------------------------
+
+Answer:
+
+Short-lived containers like BusyBox need a long-running command in normal Pods.
+
+Otherwise, they exit immediately and may enter CrashLoopBackOff because restartPolicy is Always.
+
+------------------------------------------------------------
+Q47. What is the main CKA lesson from the immutable Pod error?
+------------------------------------------------------------
+
+Answer:
+
+Pod specs are mostly immutable.
+
+If we need to change fields like container command, delete and recreate the Pod.
+
+------------------------------------------------------------
+Q48. What is the main CKA lesson from the localhost lab?
+------------------------------------------------------------
+
+Answer:
+
+Containers inside the same Pod share the same network namespace and can communicate with each other using localhost.
+
+------------------------------------------------------------
+Q49. What should you check when a multi-container Pod shows READY 1/2?
+------------------------------------------------------------
+
+Answer:
+
+Check:
+
+kubectl describe pod <pod-name>
+
+Then look at:
+
+- Which container is not ready
+- State
+- Last State
+- Reason
+- Exit Code
+- Restart Count
+- Events
+
+Also check logs:
+
+kubectl logs <pod-name> -c <container-name>
+
+------------------------------------------------------------
+Q50. Final exam memory question: Why did the Pod become healthy after adding sleep 3600?
+------------------------------------------------------------
+
+Answer:
+
+Because sleep 3600 kept the BusyBox container's main process running.
+
+Once BusyBox stayed alive, both containers became ready.
+
+The Pod status changed from:
+
+READY 1/2 CrashLoopBackOff
+
+to:
+
+READY 2/2 Running
