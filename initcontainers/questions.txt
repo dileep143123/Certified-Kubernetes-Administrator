@@ -1,0 +1,554 @@
+questions.txt
+=============
+
+TOPIC: Init Containers - Questions and Answers
+
+------------------------------------------------------------
+Q1. What is an init container?
+------------------------------------------------------------
+
+Answer:
+
+An init container is a special container that runs before the main app containers in a Pod.
+
+It is used to perform setup or initialization tasks before the actual application starts.
+
+------------------------------------------------------------
+Q2. Why is it called an init container?
+------------------------------------------------------------
+
+Answer:
+
+It is called an init container because it runs during the initialization phase of a Pod.
+
+The word init means initialization or setup before the main process starts.
+
+------------------------------------------------------------
+Q3. When does an init container run?
+------------------------------------------------------------
+
+Answer:
+
+An init container runs before the main application containers.
+
+The app containers start only after all init containers complete successfully.
+
+------------------------------------------------------------
+Q4. Do init containers run in parallel?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+Init containers run sequentially, one after another.
+
+------------------------------------------------------------
+Q5. What happens if a Pod has two init containers?
+------------------------------------------------------------
+
+Answer:
+
+The first init container runs and must complete successfully.
+
+Then the second init container runs and must complete successfully.
+
+Only after both complete, the app containers start.
+
+------------------------------------------------------------
+Q6. What happens if the first init container fails?
+------------------------------------------------------------
+
+Answer:
+
+The second init container will not start.
+
+The app container will also not start.
+
+Kubernetes will retry the failing init container.
+
+------------------------------------------------------------
+Q7. What happens if the last init container fails?
+------------------------------------------------------------
+
+Answer:
+
+The app container will not start.
+
+The Pod remains stuck in the initialization phase.
+
+The status may show Init:CrashLoopBackOff.
+
+------------------------------------------------------------
+Q8. What does Exit Code 0 mean for an init container?
+------------------------------------------------------------
+
+Answer:
+
+Exit Code 0 means the init container completed successfully.
+
+Kubernetes can then move to the next init container or start the app containers.
+
+------------------------------------------------------------
+Q9. What does a non-zero exit code mean for an init container?
+------------------------------------------------------------
+
+Answer:
+
+A non-zero exit code means the init container failed.
+
+Kubernetes will retry it based on the Pod restart policy.
+
+------------------------------------------------------------
+Q10. What is the most common status when an init container is failing?
+------------------------------------------------------------
+
+Answer:
+
+Init:CrashLoopBackOff
+
+This means an init container is failing repeatedly and Kubernetes is backing off before restarting it again.
+
+------------------------------------------------------------
+Q11. What does Init:0/1 mean?
+------------------------------------------------------------
+
+Answer:
+
+Init:0/1 means there is 1 init container and 0 init containers have completed successfully.
+
+------------------------------------------------------------
+Q12. What does Init:1/2 mean?
+------------------------------------------------------------
+
+Answer:
+
+Init:1/2 means there are 2 init containers and 1 has completed successfully.
+
+The second init container is still running, waiting, or failing.
+
+------------------------------------------------------------
+Q13. What does Running mean after init containers?
+------------------------------------------------------------
+
+Answer:
+
+Running means all init containers completed successfully and the app containers are now running.
+
+------------------------------------------------------------
+Q14. What is the correct YAML field for init containers?
+------------------------------------------------------------
+
+Answer:
+
+The correct field is:
+
+initContainers
+
+It is plural.
+
+------------------------------------------------------------
+Q15. Is this correct: initContainer?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+initContainer is wrong.
+
+Correct:
+
+initContainers
+
+------------------------------------------------------------
+Q16. Give a simple init container YAML example.
+------------------------------------------------------------
+
+Answer:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-demo
+spec:
+  initContainers:
+    - name: init-wait
+      image: busybox:1.36
+      command: ["sh", "-c", "echo init running; sleep 10"]
+
+  containers:
+    - name: app
+      image: nginx:latest
+
+------------------------------------------------------------
+Q17. What command is used to check Pod status?
+------------------------------------------------------------
+
+Answer:
+
+kubectl get pods
+
+or:
+
+kubectl get pod <pod-name>
+
+------------------------------------------------------------
+Q18. What command is used to debug init containers?
+------------------------------------------------------------
+
+Answer:
+
+kubectl describe pod <pod-name>
+
+This shows the Init Containers section, state, reason, exit code, restart count, and events.
+
+------------------------------------------------------------
+Q19. How do you check logs of an init container?
+------------------------------------------------------------
+
+Answer:
+
+kubectl logs <pod-name> -c <init-container-name>
+
+Example:
+
+kubectl logs init-demo -c init-wait
+
+------------------------------------------------------------
+Q20. How do you check previous logs of a restarted init container?
+------------------------------------------------------------
+
+Answer:
+
+kubectl logs <pod-name> -c <init-container-name> --previous
+
+Example:
+
+kubectl logs init-broken-demo -c broken-init --previous
+
+------------------------------------------------------------
+Q21. Can app containers start before init containers finish?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+App containers start only after all init containers complete successfully.
+
+------------------------------------------------------------
+Q22. Can init containers share data with app containers?
+------------------------------------------------------------
+
+Answer:
+
+Yes, but only through shared volumes.
+
+They do not automatically share filesystems.
+
+------------------------------------------------------------
+Q23. What volume type is commonly used with init containers?
+------------------------------------------------------------
+
+Answer:
+
+emptyDir is commonly used.
+
+The init container writes data to emptyDir, and the app container reads it from the same volume.
+
+------------------------------------------------------------
+Q24. What happens to emptyDir when the Pod is deleted?
+------------------------------------------------------------
+
+Answer:
+
+The emptyDir volume is deleted when the Pod is deleted.
+
+It exists only for the lifetime of the Pod.
+
+------------------------------------------------------------
+Q25. Give an example use case for init containers with volume.
+------------------------------------------------------------
+
+Answer:
+
+An init container creates a configuration file in a shared volume.
+
+The app container reads that configuration file when it starts.
+
+------------------------------------------------------------
+Q26. Do init containers support readinessProbe?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+Init containers do not support regular readinessProbe, livenessProbe, or startupProbe.
+
+------------------------------------------------------------
+Q27. Why do init containers not need readinessProbe?
+------------------------------------------------------------
+
+Answer:
+
+Because init containers are not long-running containers.
+
+They are expected to complete and exit.
+
+Readiness probes are meant for long-running app containers.
+
+------------------------------------------------------------
+Q28. What is the difference between init container and sidecar container?
+------------------------------------------------------------
+
+Answer:
+
+Init container:
+- Runs before the app
+- Must complete
+- Does not run with the app
+- Used for setup
+
+Sidecar container:
+- Runs along with the app
+- Usually keeps running
+- Used for helper functionality
+
+------------------------------------------------------------
+Q29. Give an example of an init container use case.
+------------------------------------------------------------
+
+Answer:
+
+An init container waits for a database service to become available before starting the app container.
+
+------------------------------------------------------------
+Q30. Give an example of a sidecar container use case.
+------------------------------------------------------------
+
+Answer:
+
+A sidecar container tails application logs and ships them to a logging system while the app is running.
+
+------------------------------------------------------------
+Q31. Can an init container connect to the app container in the same Pod?
+------------------------------------------------------------
+
+Answer:
+
+No, usually not.
+
+The app container has not started yet while init containers are running.
+
+------------------------------------------------------------
+Q32. Can an init container connect to external services?
+------------------------------------------------------------
+
+Answer:
+
+Yes.
+
+An init container can connect to other Kubernetes services, DNS names, databases, APIs, or external endpoints.
+
+------------------------------------------------------------
+Q33. What command can an init container use to wait for a service?
+------------------------------------------------------------
+
+Answer:
+
+Example:
+
+until nslookup mysql.default.svc.cluster.local;
+do
+  echo "waiting for mysql";
+  sleep 2;
+done
+
+------------------------------------------------------------
+Q34. What happens if an init container image cannot be pulled?
+------------------------------------------------------------
+
+Answer:
+
+The Pod will remain stuck in initialization.
+
+The status may show Init:ImagePullBackOff or Init:ErrImagePull.
+
+The app container will not start.
+
+------------------------------------------------------------
+Q35. What happens if an init container command has a syntax error?
+------------------------------------------------------------
+
+Answer:
+
+The init container may fail and restart repeatedly.
+
+The Pod may show Init:CrashLoopBackOff.
+
+The app container will not start.
+
+------------------------------------------------------------
+Q36. What should you check first when a Pod is stuck in Init:CrashLoopBackOff?
+------------------------------------------------------------
+
+Answer:
+
+Run:
+
+kubectl describe pod <pod-name>
+
+Then check:
+
+- Init container state
+- Reason
+- Exit code
+- Events
+
+Then check logs:
+
+kubectl logs <pod-name> -c <init-container-name>
+
+------------------------------------------------------------
+Q37. What is the backend component responsible for running init containers?
+------------------------------------------------------------
+
+Answer:
+
+The kubelet on the node runs and monitors init containers.
+
+The scheduler only assigns the Pod to a node.
+
+The kubelet handles the execution order.
+
+------------------------------------------------------------
+Q38. Where is the Pod object stored after creation?
+------------------------------------------------------------
+
+Answer:
+
+The Pod object is stored in etcd by the kube-apiserver.
+
+------------------------------------------------------------
+Q39. Which Kubernetes component assigns the Pod to a node?
+------------------------------------------------------------
+
+Answer:
+
+The kube-scheduler assigns the Pod to a suitable node.
+
+------------------------------------------------------------
+Q40. Which Kubernetes component starts the init containers?
+------------------------------------------------------------
+
+Answer:
+
+The kubelet on the assigned node starts the init containers.
+
+------------------------------------------------------------
+Q41. Can init containers have resource requests and limits?
+------------------------------------------------------------
+
+Answer:
+
+Yes.
+
+Init containers can have CPU and memory requests and limits.
+
+------------------------------------------------------------
+Q42. Are init container resources added together for scheduling?
+------------------------------------------------------------
+
+Answer:
+
+No.
+
+Since init containers run one at a time, Kubernetes considers the highest init container request, not the sum of all init containers.
+
+------------------------------------------------------------
+Q43. Are app container resources added together for scheduling?
+------------------------------------------------------------
+
+Answer:
+
+Yes.
+
+App containers run together, so their resource requests are added together.
+
+------------------------------------------------------------
+Q44. What is the most important CKA YAML field for this topic?
+------------------------------------------------------------
+
+Answer:
+
+spec.initContainers
+
+Example:
+
+spec:
+  initContainers:
+    - name: init
+      image: busybox
+  containers:
+    - name: app
+      image: nginx
+
+------------------------------------------------------------
+Q45. What is the most important CKA debugging command for init containers?
+------------------------------------------------------------
+
+Answer:
+
+kubectl describe pod <pod-name>
+
+This shows why the Pod is stuck in initialization.
+
+------------------------------------------------------------
+Q46. What is the most important CKA logs command for init containers?
+------------------------------------------------------------
+
+Answer:
+
+kubectl logs <pod-name> -c <init-container-name>
+
+------------------------------------------------------------
+Q47. What is the main difference between a normal BusyBox container and BusyBox as an init container?
+------------------------------------------------------------
+
+Answer:
+
+As a normal app container, BusyBox usually needs a long-running command like sleep 3600.
+
+As an init container, BusyBox is allowed to complete and exit successfully.
+
+For init containers, completion is expected.
+
+------------------------------------------------------------
+Q48. Why is Exit Code 0 good for init containers?
+------------------------------------------------------------
+
+Answer:
+
+Because init containers are supposed to complete.
+
+Exit Code 0 tells Kubernetes the init container completed successfully.
+
+------------------------------------------------------------
+Q49. Why can Exit Code 0 be a problem for normal app containers?
+------------------------------------------------------------
+
+Answer:
+
+Normal app containers are usually expected to keep running.
+
+If they exit with Exit Code 0 repeatedly and restartPolicy is Always, the Pod can enter CrashLoopBackOff.
+
+------------------------------------------------------------
+Q50. Final memory question: What must happen before app containers start?
+------------------------------------------------------------
+
+Answer:
+
+All init containers must complete successfully before app containers start.

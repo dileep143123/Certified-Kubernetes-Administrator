@@ -1,0 +1,4 @@
+Runs before app container.
+Must complete successfully.
+Does not keep running with the app.
+Used for setup/preparation.

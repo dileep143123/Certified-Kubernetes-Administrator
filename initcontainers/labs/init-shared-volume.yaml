@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-shared-volume-demo
+spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+
+  initContainers:
+    - name: init-create-file
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo "File created by init container" > /data/message.txt;
+          echo "Init container completed";
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+
+  containers:
+    - name: app
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo "App container started";
+          cat /data/message.txt;
+          sleep 3600
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
