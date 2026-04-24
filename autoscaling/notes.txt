@@ -1,0 +1,536 @@
+notes.txt
+=========
+
+TOPIC: Self-Healing Applications in Kubernetes
+
+------------------------------------------------------------
+1. What is Self-Healing?
+------------------------------------------------------------
+
+Self-healing means Kubernetes automatically detects failures and takes corrective action to bring the application back to the desired state.
+
+Kubernetes continuously compares:
+
+Desired State vs Current State
+
+If the current state does not match the desired state, Kubernetes tries to fix it.
+
+Example:
+
+Desired state:
+3 replicas of nginx should be running.
+
+Current state:
+Only 2 nginx Pods are running.
+
+Kubernetes action:
+Create 1 replacement Pod.
+
+------------------------------------------------------------
+2. Why Self-Healing is Important
+------------------------------------------------------------
+
+Applications can fail for many reasons:
+
+- Container crashes
+- Application process exits
+- Pod gets deleted
+- Node becomes unavailable
+- Application becomes unhealthy
+- Liveness probe fails
+- Readiness probe fails
+- Pod is evicted
+- Replica count drops
+
+Kubernetes self-healing helps keep the application available by automatically restarting or replacing failed workloads.
+
+------------------------------------------------------------
+3. Two Main Levels of Self-Healing
+------------------------------------------------------------
+
+Kubernetes self-healing happens mainly at two levels:
+
+1. Container-level self-healing
+2. Pod/application-level self-healing
+
+Container-level self-healing:
+Handled by kubelet.
+
+Pod/application-level self-healing:
+Handled by controllers like ReplicaSet and Deployment.
+
+------------------------------------------------------------
+4. Container-Level Self-Healing
+------------------------------------------------------------
+
+Container-level self-healing is managed by the kubelet.
+
+The kubelet runs on every worker node.
+
+If a container exits or crashes, the kubelet checks the Pod restartPolicy and restarts the container if required.
+
+Example:
+
+Container crashes.
+kubelet detects the exit.
+kubelet restarts the container.
+Restart count increases.
+
+Command:
+
+kubectl get pods
+
+Output example:
+
+NAME       READY   STATUS    RESTARTS
+nginx      1/1     Running   3
+
+RESTARTS 3 means the container has restarted 3 times.
+
+------------------------------------------------------------
+5. Pod/Application-Level Self-Healing
+------------------------------------------------------------
+
+Application-level self-healing is handled by Kubernetes controllers.
+
+Important controllers:
+
+- Deployment
+- ReplicaSet
+- StatefulSet
+- DaemonSet
+
+For CKA, the most important are:
+
+- Deployment
+- ReplicaSet
+
+A Deployment creates a ReplicaSet.
+A ReplicaSet maintains the required number of Pod replicas.
+
+Example:
+
+Deployment desired replicas = 3
+Current Pods = 2
+ReplicaSet creates 1 new Pod
+
+------------------------------------------------------------
+6. Desired State vs Current State
+------------------------------------------------------------
+
+Kubernetes controllers work using the control loop pattern.
+
+They continuously compare:
+
+Desired State:
+What should exist.
+
+Current State:
+What currently exists.
+
+If there is a difference, controllers take action.
+
+Example:
+
+Desired State:
+replicas: 3
+
+Current State:
+2 Pods running
+
+Action:
+Create 1 new Pod
+
+This is the core idea behind self-healing.
+
+------------------------------------------------------------
+7. Naked Pod vs Deployment
+------------------------------------------------------------
+
+A naked Pod is a Pod created directly without a controller.
+
+Example:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx
+
+If this Pod is deleted, Kubernetes will not recreate it.
+
+Reason:
+
+No Deployment or ReplicaSet is managing it.
+
+Important:
+
+Naked Pod deleted = gone permanently
+
+------------------------------------------------------------
+
+A Deployment-managed Pod is different.
+
+If a Pod created by a Deployment is deleted, the ReplicaSet creates a replacement Pod.
+
+Important:
+
+Deployment Pod deleted = recreated automatically
+
+------------------------------------------------------------
+8. Backend Flow of Self-Healing
+------------------------------------------------------------
+
+When a Deployment is created:
+
+1. kubectl sends YAML to kube-apiserver.
+2. kube-apiserver validates the request.
+3. Deployment object is stored in etcd.
+4. Deployment controller sees the Deployment.
+5. Deployment controller creates a ReplicaSet.
+6. ReplicaSet controller sees desired replicas.
+7. ReplicaSet creates Pod objects.
+8. Scheduler assigns Pods to nodes.
+9. kubelet starts containers on nodes.
+10. kubelet monitors containers.
+11. ReplicaSet controller monitors Pod count.
+12. If a Pod is missing, ReplicaSet creates another Pod.
+13. If a container crashes, kubelet restarts it.
+
+------------------------------------------------------------
+9. Kubernetes Components Involved
+------------------------------------------------------------
+
+kube-apiserver:
+Receives and validates Kubernetes API requests.
+
+etcd:
+Stores cluster state.
+
+scheduler:
+Assigns Pods to suitable nodes.
+
+kubelet:
+Runs on worker nodes and starts/restarts containers.
+
+Deployment controller:
+Manages Deployments and ReplicaSets.
+
+ReplicaSet controller:
+Maintains desired number of Pods.
+
+container runtime:
+Actually runs containers.
+
+------------------------------------------------------------
+10. restartPolicy
+------------------------------------------------------------
+
+restartPolicy controls how kubelet restarts containers inside a Pod.
+
+Values:
+
+- Always
+- OnFailure
+- Never
+
+Default for normal Pods:
+
+restartPolicy: Always
+
+Deployments use:
+
+restartPolicy: Always
+
+------------------------------------------------------------
+11. restartPolicy: Always
+------------------------------------------------------------
+
+Always restarts the container when it exits.
+
+This applies even if the container exits with code 0.
+
+Used by:
+
+- Deployments
+- ReplicaSets
+- DaemonSets
+- normal long-running Pods
+
+Example:
+
+restartPolicy: Always
+
+If container exits:
+kubelet restarts it.
+
+------------------------------------------------------------
+12. restartPolicy: OnFailure
+------------------------------------------------------------
+
+Restarts the container only if it exits with non-zero exit code.
+
+Exit Code 0:
+Do not restart.
+
+Exit Code 1 or other non-zero:
+Restart.
+
+Commonly used by Jobs.
+
+------------------------------------------------------------
+13. restartPolicy: Never
+------------------------------------------------------------
+
+Never restarts the container.
+
+If the container exits, it remains exited.
+
+Useful for one-time debugging or task-based Pods.
+
+------------------------------------------------------------
+14. CrashLoopBackOff
+------------------------------------------------------------
+
+CrashLoopBackOff means a container keeps crashing or exiting repeatedly.
+
+Kubernetes tries to restart it, but after repeated failures, kubelet waits longer before restarting again.
+
+This waiting time is called backoff.
+
+Common causes:
+
+- Wrong command
+- Application exits immediately
+- Missing environment variable
+- Missing ConfigMap or Secret
+- Application error
+- Permission issue
+- Wrong file path
+- Bad liveness probe
+
+------------------------------------------------------------
+15. Liveness Probe
+------------------------------------------------------------
+
+A livenessProbe checks whether a container is alive and healthy.
+
+If the liveness probe fails repeatedly, kubelet restarts the container.
+
+Important:
+
+livenessProbe failure causes container restart.
+
+Example use case:
+
+Application process is running but stuck or deadlocked.
+
+Kubernetes can detect this using a liveness probe and restart the container.
+
+------------------------------------------------------------
+16. Liveness Probe Example
+------------------------------------------------------------
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+Meaning:
+
+After 10 seconds, kubelet starts checking the application.
+Every 5 seconds, kubelet sends an HTTP GET request to /
+If probe fails repeatedly, kubelet restarts the container.
+
+------------------------------------------------------------
+17. Readiness Probe
+------------------------------------------------------------
+
+A readinessProbe checks whether a Pod is ready to receive traffic.
+
+If readiness probe fails:
+
+- Pod is marked NotReady
+- Service removes the Pod from endpoints
+- Traffic is not sent to that Pod
+- Container is not restarted
+
+Important:
+
+readinessProbe does not restart containers.
+
+------------------------------------------------------------
+18. Readiness Probe Example
+------------------------------------------------------------
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+Meaning:
+
+Kubernetes checks if the container is ready to receive traffic.
+
+If it is not ready, it is removed from Service load balancing.
+
+------------------------------------------------------------
+19. Liveness vs Readiness
+------------------------------------------------------------
+
+Liveness Probe:
+
+Question:
+Should this container be restarted?
+
+Failure action:
+Restart container.
+
+Used for:
+Detecting unhealthy or stuck applications.
+
+Readiness Probe:
+
+Question:
+Should this Pod receive traffic?
+
+Failure action:
+Remove Pod from Service endpoints.
+
+Used for:
+Traffic control.
+
+Memory:
+
+Liveness = restart
+Readiness = traffic
+
+------------------------------------------------------------
+20. Self-Healing During Node Failure
+------------------------------------------------------------
+
+If a node fails:
+
+1. Node stops sending heartbeats.
+2. Control plane marks node as NotReady.
+3. Pods on that node become unavailable.
+4. For Pods managed by controllers, Kubernetes creates replacement Pods on healthy nodes.
+5. Scheduler places the new Pods on available nodes.
+
+Important:
+
+Pods are not moved from one node to another.
+They are recreated.
+
+------------------------------------------------------------
+21. What Kubernetes Can Heal
+------------------------------------------------------------
+
+Kubernetes can heal:
+
+- Crashed containers
+- Deleted Pods managed by Deployments/ReplicaSets
+- Missing replicas
+- Failed liveness probes
+- Node failure for controller-managed workloads
+- Unready Pods removed from traffic
+- Restartable application failures
+
+------------------------------------------------------------
+22. What Kubernetes Cannot Automatically Heal
+------------------------------------------------------------
+
+Kubernetes cannot magically fix:
+
+- Wrong image name
+- Bad application code
+- Missing ConfigMap
+- Missing Secret
+- Wrong command
+- Wrong port
+- Insufficient CPU/memory
+- External database outage
+- Bad probe configuration
+- Registry authentication failure
+
+It may retry repeatedly, but the root cause must be fixed by the user.
+
+------------------------------------------------------------
+23. Important Statuses
+------------------------------------------------------------
+
+Running:
+Pod is running.
+
+CrashLoopBackOff:
+Container keeps crashing or exiting.
+
+ImagePullBackOff:
+Kubernetes cannot pull image.
+
+ErrImagePull:
+Initial image pull failed.
+
+Pending:
+Pod is waiting to be scheduled or waiting for resources.
+
+ContainerCreating:
+Container is being created.
+
+NotReady:
+Pod is not ready to receive traffic.
+
+Terminating:
+Pod is being deleted.
+
+------------------------------------------------------------
+24. CKA Exam Importance
+------------------------------------------------------------
+
+Self-healing is important for CKA because questions may test:
+
+- Deployment replica behavior
+- ReplicaSet replacing deleted Pods
+- Difference between naked Pod and Deployment
+- kubelet restarting crashed containers
+- restartPolicy
+- livenessProbe
+- readinessProbe
+- Debugging CrashLoopBackOff
+- Checking logs and events
+- Understanding desired state vs current state
+
+------------------------------------------------------------
+25. Must Remember
+------------------------------------------------------------
+
+Kubernetes self-healing is based on desired state vs current state.
+
+kubelet restarts failed containers.
+
+ReplicaSet recreates missing Pods.
+
+Deployment manages ReplicaSets.
+
+Naked Pods are not recreated after deletion.
+
+Deployment-managed Pods are recreated after deletion.
+
+livenessProbe failure restarts containers.
+
+readinessProbe failure removes Pods from Service traffic.
+
+Pods are not moved during node failure; they are recreated.
+
+------------------------------------------------------------
+26. Final Memory Line
+------------------------------------------------------------
+
+Self-healing in Kubernetes means kubelet and controllers automatically restart failed containers, replace missing Pods, and maintain the desired state of applications.
