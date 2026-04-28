@@ -1,5 +1,6 @@
 # in this multiple containers will communicate with each other over localhost
-
+# for demonstration use the below command after running this yaml file
+# wget -qO- http://localhost:80
 apiVersion: v1
 kind: Pod
 metadata:
