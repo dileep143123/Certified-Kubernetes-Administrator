@@ -1,0 +1,604 @@
+misc.txt
+========
+
+TOPIC: Self-Healing Applications - Labs, Commands, Debug Flow, and Exam Tips
+
+------------------------------------------------------------
+1. Lab 1: Deployment Self-Healing
+------------------------------------------------------------
+
+Goal:
+
+Create a Deployment with 3 replicas and delete one Pod to see Kubernetes recreate it.
+
+Command:
+
+kubectl create deployment self-heal-demo --image=nginx --replicas=3
+
+Check Deployment:
+
+kubectl get deployment self-heal-demo
+
+Check ReplicaSet:
+
+kubectl get rs
+
+Check Pods:
+
+kubectl get pods
+
+Delete one Pod:
+
+kubectl delete pod <pod-name>
+
+Check again:
+
+kubectl get pods
+
+Expected:
+
+One Pod terminates.
+One new Pod is created.
+Eventually 3 Pods are running again.
+
+Learning:
+
+Deployment-managed Pods are self-healed by ReplicaSet.
+
+------------------------------------------------------------
+2. Lab 2: Naked Pod Is Not Recreated
+------------------------------------------------------------
+
+Goal:
+
+Create a direct Pod and delete it.
+
+Command:
+
+kubectl run naked-nginx --image=nginx
+
+Check:
+
+kubectl get pods
+
+Delete:
+
+kubectl delete pod naked-nginx
+
+Check again:
+
+kubectl get pods
+
+Expected:
+
+The Pod does not come back.
+
+Learning:
+
+A naked Pod is not self-healed after deletion because no controller manages it.
+
+------------------------------------------------------------
+3. Lab 3: Container Restart by kubelet
+------------------------------------------------------------
+
+Create file:
+
+cat > crash-pod.yaml <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crash-pod
+spec:
+  containers:
+    - name: crash-container
+      image: busybox:1.36
+      command: ["sh", "-c", "echo starting; sleep 5; exit 1"]
+EOF
+
+Apply:
+
+kubectl apply -f crash-pod.yaml
+
+Watch:
+
+kubectl get pod crash-pod -w
+
+Describe:
+
+kubectl describe pod crash-pod
+
+Check logs:
+
+kubectl logs crash-pod -c crash-container
+
+Check previous logs:
+
+kubectl logs crash-pod -c crash-container --previous
+
+Expected:
+
+The Pod eventually shows CrashLoopBackOff.
+
+Learning:
+
+kubelet restarts failed containers based on restartPolicy.
+
+------------------------------------------------------------
+4. Lab 4: Liveness Probe Self-Healing
+------------------------------------------------------------
+
+Create file:
+
+cat > liveness-demo.yaml <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          touch /tmp/healthy;
+          sleep 30;
+          rm -f /tmp/healthy;
+          sleep 3600
+      livenessProbe:
+        exec:
+          command:
+            - cat
+            - /tmp/healthy
+        initialDelaySeconds: 5
+        periodSeconds: 5
+EOF
+
+Apply:
+
+kubectl apply -f liveness-demo.yaml
+
+Watch:
+
+kubectl get pod liveness-demo -w
+
+Describe:
+
+kubectl describe pod liveness-demo
+
+Expected:
+
+After /tmp/healthy is deleted, the liveness probe fails.
+kubelet restarts the container.
+RESTARTS count increases.
+
+Learning:
+
+livenessProbe failure causes container restart.
+
+------------------------------------------------------------
+5. Lab 5: Readiness Probe Traffic Control
+------------------------------------------------------------
+
+Create file:
+
+cat > readiness-demo.yaml <<'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readiness-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: readiness-demo
+  template:
+    metadata:
+      labels:
+        app: readiness-demo
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+EOF
+
+Apply:
+
+kubectl apply -f readiness-demo.yaml
+
+Expose:
+
+kubectl expose deployment readiness-demo --port=80 --target-port=80
+
+Check Pods:
+
+kubectl get pods
+
+Check Service:
+
+kubectl get svc readiness-demo
+
+Check Endpoints:
+
+kubectl get endpoints readiness-demo
+
+Learning:
+
+readinessProbe controls whether Pod receives Service traffic.
+readinessProbe does not restart containers.
+
+------------------------------------------------------------
+6. Important Commands
+------------------------------------------------------------
+
+Get Pods:
+
+kubectl get pods
+
+Get Pods with wide output:
+
+kubectl get pods -o wide
+
+Get Deployments:
+
+kubectl get deployments
+
+Short form:
+
+kubectl get deploy
+
+Get ReplicaSets:
+
+kubectl get replicasets
+
+Short form:
+
+kubectl get rs
+
+Describe Pod:
+
+kubectl describe pod <pod-name>
+
+Describe Deployment:
+
+kubectl describe deployment <deployment-name>
+
+Check Pod logs:
+
+kubectl logs <pod-name>
+
+Check logs of specific container:
+
+kubectl logs <pod-name> -c <container-name>
+
+Check previous crashed container logs:
+
+kubectl logs <pod-name> --previous
+
+Check previous logs of specific container:
+
+kubectl logs <pod-name> -c <container-name> --previous
+
+Delete Pod:
+
+kubectl delete pod <pod-name>
+
+Scale Deployment:
+
+kubectl scale deployment <deployment-name> --replicas=3
+
+Check rollout:
+
+kubectl rollout status deployment <deployment-name>
+
+Get YAML:
+
+kubectl get pod <pod-name> -o yaml
+
+Check owner references:
+
+kubectl get pod <pod-name> -o yaml | grep -A5 ownerReferences
+
+------------------------------------------------------------
+7. Debug Flow for Self-Healing
+------------------------------------------------------------
+
+Step 1:
+
+Check Pods:
+
+kubectl get pods
+
+Step 2:
+
+Check status:
+
+- Running
+- CrashLoopBackOff
+- ImagePullBackOff
+- Pending
+- NotReady
+
+Step 3:
+
+Describe the Pod:
+
+kubectl describe pod <pod-name>
+
+Step 4:
+
+Check:
+
+- Events
+- State
+- Last State
+- Exit Code
+- Restart Count
+- Liveness probe failures
+- Readiness probe failures
+
+Step 5:
+
+Check logs:
+
+kubectl logs <pod-name>
+
+Step 6:
+
+If container restarted, check previous logs:
+
+kubectl logs <pod-name> --previous
+
+Step 7:
+
+Check if Pod is controller-managed:
+
+kubectl get pod <pod-name> -o yaml | grep -A5 ownerReferences
+
+Step 8:
+
+Check Deployment and ReplicaSet:
+
+kubectl get deploy
+kubectl get rs
+
+Step 9:
+
+Fix root cause.
+
+------------------------------------------------------------
+8. Common Self-Healing Scenarios
+------------------------------------------------------------
+
+Scenario 1:
+
+Container crashes.
+
+Who heals?
+kubelet
+
+Action:
+Restart container
+
+------------------------------------------------------------
+
+Scenario 2:
+
+Deployment Pod is deleted.
+
+Who heals?
+ReplicaSet controller
+
+Action:
+Create replacement Pod
+
+------------------------------------------------------------
+
+Scenario 3:
+
+Naked Pod is deleted.
+
+Who heals?
+Nobody
+
+Action:
+Pod remains deleted
+
+------------------------------------------------------------
+
+Scenario 4:
+
+Liveness probe fails.
+
+Who heals?
+kubelet
+
+Action:
+Restart container
+
+------------------------------------------------------------
+
+Scenario 5:
+
+Readiness probe fails.
+
+Who heals?
+Service endpoint controller/control plane
+
+Action:
+Remove Pod from Service endpoints
+
+Important:
+Container is not restarted
+
+------------------------------------------------------------
+
+Scenario 6:
+
+Node fails.
+
+Who heals?
+Node controller + workload controller + scheduler
+
+Action:
+Replacement Pods are created on healthy nodes for controller-managed workloads
+
+------------------------------------------------------------
+9. Liveness Probe Template
+------------------------------------------------------------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-template
+spec:
+  containers:
+    - name: app
+      image: nginx
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 10
+        periodSeconds: 5
+
+------------------------------------------------------------
+10. Readiness Probe Template
+------------------------------------------------------------
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-template
+spec:
+  containers:
+    - name: app
+      image: nginx
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 5
+
+------------------------------------------------------------
+11. Deployment Template for Self-Healing
+------------------------------------------------------------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-heal-demo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: self-heal-demo
+  template:
+    metadata:
+      labels:
+        app: self-heal-demo
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+
+------------------------------------------------------------
+12. CKA Exam Tips
+------------------------------------------------------------
+
+Tip 1:
+
+If a naked Pod is deleted, it will not come back.
+
+Tip 2:
+
+If a Deployment Pod is deleted, ReplicaSet recreates it.
+
+Tip 3:
+
+kubelet restarts containers.
+
+Tip 4:
+
+ReplicaSet recreates Pods.
+
+Tip 5:
+
+Deployment manages ReplicaSets.
+
+Tip 6:
+
+livenessProbe failure restarts container.
+
+Tip 7:
+
+readinessProbe failure removes Pod from traffic.
+
+Tip 8:
+
+Use kubectl describe pod to debug failures.
+
+Tip 9:
+
+Use --previous to check logs of crashed containers.
+
+Tip 10:
+
+Check ownerReferences to know whether a Pod is managed by a controller.
+
+------------------------------------------------------------
+13. Fast Practice Commands
+------------------------------------------------------------
+
+Create Deployment:
+
+kubectl create deployment self-heal-demo --image=nginx --replicas=3
+
+Get Pods:
+
+kubectl get pods
+
+Delete one Pod:
+
+kubectl delete pod <pod-name>
+
+Watch healing:
+
+kubectl get pods -w
+
+Scale up:
+
+kubectl scale deployment self-heal-demo --replicas=5
+
+Scale down:
+
+kubectl scale deployment self-heal-demo --replicas=2
+
+Delete Deployment:
+
+kubectl delete deployment self-heal-demo
+
+------------------------------------------------------------
+14. Clean Up Commands
+------------------------------------------------------------
+
+kubectl delete deployment self-heal-demo --ignore-not-found
+kubectl delete pod naked-nginx --ignore-not-found
+kubectl delete pod crash-pod --ignore-not-found
+kubectl delete pod liveness-demo --ignore-not-found
+kubectl delete deployment readiness-demo --ignore-not-found
+kubectl delete svc readiness-demo --ignore-not-found
+
+------------------------------------------------------------
+15. Final One-Line Revision
+------------------------------------------------------------
+
+Self-healing in Kubernetes means kubelet restarts failed containers, controllers replace missing Pods, liveness probes restart unhealthy containers, and readiness probes stop traffic from going to unready Pods.
