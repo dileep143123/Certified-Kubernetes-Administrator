@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multiple-init-demo
+spec:
+  initContainers:
+    - name: init-first
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo "First init container running";
+          sleep 10;
+          echo "First init container completed";
+
+    - name: init-second
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo "Second init container running";
+          sleep 10;
+          echo "Second init container completed";
+
+  containers:
+    - name: app
+      image: nginx:latest

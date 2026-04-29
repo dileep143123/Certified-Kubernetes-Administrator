@@ -1,0 +1,11 @@
+Init container:
+  - before app
+  - sequential
+  - must complete
+  - setup tasks
+
+Sidecar container:
+  - with app
+  - parallel
+  - usually keeps running
+  - support tasks

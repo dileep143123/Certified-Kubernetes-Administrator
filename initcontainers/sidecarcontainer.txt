@@ -1,0 +1,3 @@
+Runs along with the app container.
+Keeps running while app is running.
+Used for helper functionality.
